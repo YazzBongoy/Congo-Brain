@@ -67,18 +67,26 @@ def detect_anomalies() -> None:
         info.append(f"{report['anomaly_rate']}%\n", style="yellow")
         console.print(Panel(info, title="Rapport de Detection d'Anomalies", border_style="red"))
 
+        if report.get("rules_applied"):
+            console.print("\n[bold]Regles appliquees:[/]")
+            for rule in report["rules_applied"]:
+                console.print(f"  [dim]•[/] {rule}")
+
         if report["anomalies"]:
-            table = Table(title="Transactions Suspectes", show_lines=True)
+            table = Table(title="\nTransactions Suspectes", show_lines=True)
             table.add_column("Ref", style="dim")
             table.add_column("Montant (FC)", style="red", justify="right")
-            table.add_column("Description", style="white")
-            table.add_column("Beneficiaire", style="yellow")
+            table.add_column("Description", style="white", max_width=35)
+            table.add_column("Beneficiaire", style="yellow", max_width=20)
             table.add_column("Score", style="magenta", justify="right")
+            table.add_column("Raisons", style="bright_red", max_width=50)
             for t in report["anomalies"]:
+                reasons = t.anomaly_reason or "-"
                 table.add_row(
                     t.reference_number, f"{t.amount:,.0f}",
-                    t.description[:40], t.beneficiary or "-",
+                    t.description[:35], t.beneficiary or "-",
                     f"{t.anomaly_score:.2f}",
+                    reasons,
                 )
             console.print(table)
     finally:

@@ -90,16 +90,30 @@ class BudgetService:
     def run_anomaly_detection(self) -> dict:
         transactions = self.db.query(Transaction).all()
         if not transactions:
-            return {"total_transactions": 0, "anomalies_detected": 0, "anomaly_rate": 0.0, "anomalies": []}
+            return {
+                "total_transactions": 0, "anomalies_detected": 0,
+                "anomaly_rate": 0.0, "anomalies": [], "rules_applied": [],
+            }
 
-        anomalies = detect_anomalies(transactions)
-        for t in anomalies:
-            self.db.commit()
+        budgets = self.db.query(Budget).all()
+        anomalies = detect_anomalies(transactions, budgets=budgets)
+        self.db.commit()
+
+        rules_applied = [
+            "z-score (ecart statistique global)",
+            "z-score intra-budget (ecart au sein du meme budget)",
+            "mots-cles suspects (description)",
+            "montants ronds (zeros consecutifs)",
+            "doublons (montants quasi-identiques)",
+            "depassement budgetaire (depense > allocation)",
+            "ratio budget (transaction > 40% du budget)",
+        ]
 
         return {
             "total_transactions": len(transactions),
             "anomalies_detected": len(anomalies),
             "anomaly_rate": round(len(anomalies) / len(transactions) * 100, 1),
+            "rules_applied": rules_applied,
             "anomalies": anomalies,
         }
 

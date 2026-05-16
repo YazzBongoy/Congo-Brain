@@ -40,6 +40,7 @@ class Transaction(Base):
     reference_number: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     is_anomaly: Mapped[bool] = mapped_column(Boolean, default=False)
     anomaly_score: Mapped[float] = mapped_column(Float, default=0.0)
+    anomaly_reason: Mapped[str] = mapped_column(String(500), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     budget: Mapped["Budget"] = relationship("Budget", back_populates="transactions")
