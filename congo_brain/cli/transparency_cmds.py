@@ -35,9 +35,12 @@ def list_reports(
         table.add_column("Statut", style="blue")
         for r in reports:
             table.add_row(
-                str(r.id), r.ministry, r.period,
+                str(r.id),
+                r.ministry,
+                r.period,
                 f"{r.transparency_score}%",
-                f"{r.compliance_rate}%", r.status,
+                f"{r.compliance_rate}%",
+                r.status,
             )
         console.print(table)
     finally:
@@ -68,8 +71,15 @@ def transparency_dashboard() -> None:
             table = Table(title="Par Ministere", show_lines=True)
             table.add_column("Ministere", style="bold cyan", min_width=25)
             table.add_column("Rapports", style="yellow", justify="right")
-            for m, cnt in dash["by_ministry"].items():
-                table.add_row(m, str(cnt))
+            table.add_column("Transparence", style="green", justify="right")
+            table.add_column("Conformite", style="magenta", justify="right")
+            for entry in dash["by_ministry"]:
+                table.add_row(
+                    entry["ministry"],
+                    str(entry["report_count"]),
+                    f"{entry['avg_transparency_score']}%",
+                    f"{entry['avg_compliance_rate']}%",
+                )
             console.print(table)
     finally:
         db.close()
