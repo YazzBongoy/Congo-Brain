@@ -44,9 +44,11 @@ def list_alerts(
             sev_style = sev_map.get(a.severity, "white")
             status = "Resolu" if a.is_resolved else "Actif"
             table.add_row(
-                str(a.id), a.alert_type,
+                str(a.id),
+                a.alert_type,
                 Text(a.severity, style=sev_style),
-                a.province, f"{a.risk_score:.1f}",
+                a.province,
+                f"{a.risk_score:.1f}",
                 status,
             )
         console.print(table)
@@ -75,18 +77,23 @@ def security_dashboard() -> None:
         info.append("Score de risque moyen: ", style="bold")
         info.append(f"{dash['avg_risk_score']}\n", style="yellow")
         info.append("\nPar severite: ", style="bold")
-        info.append(f"Critique={dash.get('critical', 0)} ", style="red")
-        info.append(f"Haut={dash.get('high', 0)} ", style="yellow")
-        info.append(f"Moyen={dash.get('medium', 0)} ", style="cyan")
-        info.append(f"Bas={dash.get('low', 0)}\n", style="green")
+        info.append(f"Critique={dash.get('critical_count', 0)} ", style="red")
+        info.append(f"Haut={dash.get('high_count', 0)} ", style="yellow")
+        info.append(f"Moyen={dash.get('medium_count', 0)} ", style="cyan")
+        info.append(f"Bas={dash.get('low_count', 0)}\n", style="green")
         console.print(Panel(info, title="Tableau de Bord Securite (PeaceNet)", border_style="red"))
 
         if dash.get("by_province"):
             table = Table(title="Alertes par Province", show_lines=True)
             table.add_column("Province", style="bold cyan")
             table.add_column("Alertes", style="yellow", justify="right")
-            for prov, cnt in dash["by_province"].items():
-                table.add_row(prov, str(cnt))
+            table.add_column("Indice Risque", style="red", justify="right")
+            for entry in dash["by_province"]:
+                table.add_row(
+                    entry["province"],
+                    str(entry["total_alerts"]),
+                    f"{entry['risk_index']:.1f}",
+                )
             console.print(table)
     finally:
         db.close()
