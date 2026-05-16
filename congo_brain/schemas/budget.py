@@ -45,6 +45,7 @@ class TransactionOut(BaseModel):
     reference_number: str
     is_anomaly: bool
     anomaly_score: float
+    anomaly_reason: str | None = None
     created_at: datetime
 
     model_config = {"from_attributes": True}
