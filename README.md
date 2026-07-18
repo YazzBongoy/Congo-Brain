@@ -12,8 +12,8 @@ Transform public governance into an economic optimization problem powered by art
 ## Quick Start
 ```bash
 # Clone the repository
-git clone https://github.com/yourorg/IAGov.git
-cd IAGov
+git clone https://github.com/YazzBongoy/Congo-Brain.git
+cd Congo-Brain
 
 # Build and run with Docker Compose (development profile)
 ./scripts/dev-setup.sh
@@ -31,6 +31,9 @@ The full architecture pack is located in the `docs/` directory:
 - `ROADMAP.md` – Five‑year development plan.
 - `BACKLOG.md` – Prioritized user stories and epics.
 - `DOMAIN_MODEL.md` – DDD bounded contexts and aggregate roots.
+
+## Project Description (Congo‑Brain)
+**Governance by IA Project for Democratic Republic of the Congo** – a chance to lift the nation out of poverty and corruption through AI‑driven governance.
 
 ## Contributing
 Please follow the `CONTRIBUTING.md` guidelines. All contributions must pass the automated CI pipeline, including unit, integration, and security tests.
