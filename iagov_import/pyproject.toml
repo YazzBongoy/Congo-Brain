@@ -1,0 +1,44 @@
+[tool.poetry]
+name = "congo-brain"
+version = "1.0.0"
+description = "Congo-Brain — Plateforme IA de gouvernance pour la RDC"
+readme = "README.md"
+license = "MIT"
+packages = [{include = "congo_brain"}, {include = "ia_gov"}]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+typer = ">=0.9.0"
+rich = ">=13.0.0"
+fastapi = ">=0.110.0"
+uvicorn = {version = ">=0.27.0", extras = ["standard"]}
+pydantic = ">=2.0.0"
+pydantic-settings = ">=2.0.0"
+sqlalchemy = ">=2.0.0"
+python-jose = {version = ">=3.3.0", extras = ["cryptography"]}
+
+[tool.poetry.scripts]
+ia-gov = "ia_gov.cli.app:app"
+congo-brain = "congo_brain.cli.app:app"
+
+[tool.poetry.group.dev.dependencies]
+ruff = ">=0.3.0"
+mypy = ">=1.8.0"
+pytest = ">=8.0.0"
+httpx = ">=0.27.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true

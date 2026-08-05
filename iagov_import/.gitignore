@@ -1,0 +1,35 @@
+# Git ignore for IAGov project
+# Python / virtualenv
+__pycache__/
+*.py[cod]
+*.so
+venv/
+.env
+
+# Build artefacts
+build/
+dist/
+*.egg-info/
+
+# Docker artefacts
+docker-compose.override.yml
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / editor
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Test coverage
+coverage.xml
+htmlcov/
+.coverage
+
+# Secrets
+*.pem
+*.key
