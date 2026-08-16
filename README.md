@@ -2,7 +2,7 @@
 
 Governance-by-AI platform for the Democratic Republic of the Congo.
 
-This repository contains the Congo-Brain platform and the IAGov project (Intelligent Governance). IAGov design documents have been consolidated under docs/iagov. See docs/iagov/ECONOMIC_ENGINE.md for the Economic Engine design and docs/iagov/PROJECT_PLAN.md for the roadmap.
+This repository contains the Congo-Brain core services and the IAGov project (Intelligent Governance). IAGov design documents have been consolidated under docs/iagov — see docs/iagov/ECONOMIC_ENGINE.md for the Economic Engine and other architecture documents.
 
 Repository layout (high level):
 - congo_brain/: core services, models and API prototypes
@@ -16,7 +16,7 @@ Quick start (developer):
 
 Contributing
 - See docs/iagov/PROJECT_PLAN.md for the roadmap and planned milestones.
-- Open issues and PRs against this repository. Follow contribution guidelines.
+- Open issues and PRs against this repository. Be sure to follow the coding and contribution guidelines in the repo.
 
 License
 - See LICENSE at the project root.

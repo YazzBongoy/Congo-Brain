@@ -33,3 +33,6 @@ htmlcov/
 # Secrets
 *.pem
 *.key
+
+# Databases
+*.db
