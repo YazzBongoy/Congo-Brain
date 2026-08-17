@@ -57,6 +57,15 @@ app.add_middleware(PrometheusMiddleware)
 app.include_router(v1_router)
 app.include_router(metrics_router)
 
+# GraphQL
+try:
+    from strawberry.fastapi import GraphQLRouter
+    from congo_brain.api.graphql import schema as gql_schema
+    graphql_app = GraphQLRouter(gql_schema)
+    app.include_router(graphql_app, prefix="/graphql")
+except ImportError:
+    pass
+
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
