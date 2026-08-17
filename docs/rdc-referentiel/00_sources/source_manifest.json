@@ -1,0 +1,76 @@
+{
+  "project": "IAGov",
+  "scope": "RDC économie publique fiscalité budget gouvernance",
+  "sources": [
+    [
+      "Ministère du Budget",
+      "https://budget.gouv.cd/budget-2026/",
+      "P1"
+    ],
+    [
+      "Lois de finances",
+      "https://budget.gouv.cd/lois-de-finances/",
+      "P1"
+    ],
+    [
+      "DGI Code des impôts",
+      "https://dgi.gouv.cd/code-des-impots/",
+      "P1"
+    ],
+    [
+      "DGI Statistiques",
+      "https://dgi.gouv.cd/statistiques/",
+      "P1"
+    ],
+    [
+      "DGI Rapports annuels",
+      "https://dgi.gouv.cd/rapports-annuels-dactivites/",
+      "P1"
+    ],
+    [
+      "BCC Finances publiques",
+      "https://www.bcc.cd/statistiques/finances-publiques",
+      "P1"
+    ],
+    [
+      "BCC Bulletin statistique",
+      "https://bcc.cd/publications/bulletin-de-statistiques",
+      "P1"
+    ],
+    [
+      "ARMP Marchés publics",
+      "https://armp-rdc.cd/the-future-of-possible-6/",
+      "P1"
+    ],
+    [
+      "ITIE Rapports",
+      "https://www.itierdc.net/rapports/",
+      "P1"
+    ],
+    [
+      "ITIE Open Data",
+      "https://www.itierdc.net/open-data/",
+      "P1"
+    ],
+    [
+      "Cour des comptes",
+      "https://courdescomptes.cd/rapports-et-audit/",
+      "P1"
+    ],
+    [
+      "IGF",
+      "https://www.igf.gouv.cd/",
+      "P1"
+    ],
+    [
+      "FMI Article IV 2026",
+      "https://www.imf.org/fr/news/articles/2026/05/06/pr-26139-democratic-republic-of-congo-imf-completes-the-2026-article-iv-and-programs-rev-mission",
+      "P2"
+    ],
+    [
+      "Banque mondiale Economic Update RDC 2026",
+      "https://documents.worldbank.org/en/publication/documents-reports/documentdetail/099032326095037240",
+      "P2"
+    ]
+  ]
+}
