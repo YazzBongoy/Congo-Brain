@@ -1,12 +1,14 @@
-"""MOEG Economic Engine API — Endpoints for welfare optimization.
+"""MOEG Economic Engine API — Surplus National Net (SNN) endpoints.
+
+SNN = CS + PS + GR + NRV - DWL - EC
 
 Provides:
-    /api/v1/economic/welfare       — Welfare model dashboard
-    /api/v1/economic/resources     — Natural resource optimizer
-    /api/v1/economic/investments   — Investment allocation (LP)
+    /api/v1/economic/welfare       — SNN welfare model dashboard
+    /api/v1/economic/resources     — Natural resource NRV optimizer
+    /api/v1/economic/investments   — Investment allocation (NSB scoring)
     /api/v1/economic/nwi           — National Welfare Index
-    /api/v1/economic/corruption    — DWL calculator
-    /api/v1/economic/dashboard     — Combined MOEG dashboard
+    /api/v1/economic/corruption    — DWL + EC cost calculator
+    /api/v1/economic/dashboard     — Combined MOEG SNN dashboard
 """
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ from congo_brain.services.economic.welfare_model import WelfareModel, EconomyCon
 from congo_brain.services.economic.resource_optimizer import ResourceOptimizer
 from congo_brain.services.economic.investment_allocator import InvestmentAllocator
 from congo_brain.services.economic.nwi import NationalWelfareIndex, NWIComponents
-from congo_brain.services.economic.corruption_calculator import CorruptionCalculator, DWLComponents
+from congo_brain.services.economic.corruption_calculator import CorruptionCalculator, DWLComponents, EnvironmentalCost
 
 router = APIRouter(prefix="/economic", tags=["MOEG"])
 
@@ -30,7 +32,9 @@ class SectorInput(BaseModel):
     cs: float
     ps: float
     revenue: float
-    dwl: float
+    nrv: float = 0.0
+    dwl: float = 0.0
+    ec: float = 0.0
 
 
 class ConstraintInput(BaseModel):
@@ -47,35 +51,42 @@ class NWIInput(BaseModel):
     consumer_surplus: float
     producer_surplus: float
     government_revenue: float
+    natural_resource_value: float = 0.0
     sustainability: float
+    dwl_rate: float = 0.0
+    ec_rate: float = 0.0
     max_cs: float = 10.0
     max_ps: float = 10.0
     max_revenue: float = 10.0
+    max_nrv: float = 10.0
     max_sustainability: float = 10.0
 
 
 class InvestmentWeights(BaseModel):
-    w_cs: float = 0.25
-    w_ps: float = 0.25
+    w_revenue: float = 0.15
     w_jobs: float = 0.20
-    w_gdp: float = 0.15
-    w_corruption: float = 0.10
+    w_nrv: float = 0.20
     w_sustainability: float = 0.05
+    w_cost: float = 0.15
+    w_corruption: float = 0.15
+    w_env: float = 0.10
+    w_duration: float = 0.05
 
 
-# ── Welfare Model ──────────────────────────────────────────────
+# ── Welfare Model (SNN) ───────────────────────────────────────
 
 @router.get("/welfare")
 def welfare_dashboard(
     _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
 ) -> dict:
     wm = WelfareModel()
-    wm.add_sector("Énergie", cs=4.5, ps=5.0, revenue=2.0, dwl=1.2)
-    wm.add_sector("Transport", cs=3.0, ps=4.0, revenue=1.5, dwl=0.8)
-    wm.add_sector("Santé", cs=6.0, ps=1.0, revenue=0.5, dwl=0.3)
-    wm.add_sector("Industrie", cs=2.0, ps=6.5, revenue=3.0, dwl=1.5)
-    wm.add_sector("Agriculture", cs=5.0, ps=3.0, revenue=1.0, dwl=0.5)
-    wm.add_sector("Numérique", cs=3.5, ps=4.5, revenue=1.8, dwl=0.4)
+    wm.add_sector("Énergie", cs=4.5, ps=5.0, revenue=2.0, nrv=3.0, dwl=1.2, ec=0.8)
+    wm.add_sector("Transport", cs=3.0, ps=4.0, revenue=1.5, nrv=1.0, dwl=0.8, ec=0.5)
+    wm.add_sector("Santé", cs=6.0, ps=1.0, revenue=0.5, nrv=0.2, dwl=0.3, ec=0.1)
+    wm.add_sector("Industrie minière", cs=2.0, ps=6.5, revenue=3.0, nrv=8.0, dwl=1.5, ec=1.2)
+    wm.add_sector("Agriculture", cs=5.0, ps=3.0, revenue=1.0, nrv=2.0, dwl=0.5, ec=0.3)
+    wm.add_sector("Forêt", cs=3.5, ps=2.0, revenue=0.8, nrv=4.0, dwl=0.4, ec=1.5)
+    wm.add_sector("Numérique", cs=3.5, ps=4.5, revenue=1.8, nrv=0.5, dwl=0.4, ec=0.1)
     wm.set_constraints(EconomyConstraints(
         budget_ceiling=10.0, revenue=8.5,
         current_debt_to_gdp=45.0, gdp=55.0, current_inflation=3.0,
@@ -89,11 +100,11 @@ def add_sector(
     _user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
 ) -> dict:
     wm = WelfareModel()
-    sw = wm.add_sector(body.sector, body.cs, body.ps, body.revenue, body.dwl)
+    sw = wm.add_sector(body.sector, body.cs, body.ps, body.revenue, body.nrv, body.dwl, body.ec)
     return sw.to_dict()
 
 
-# ── Resources ──────────────────────────────────────────────────
+# ── Resources (NRV) ───────────────────────────────────────────
 
 @router.get("/resources")
 def resources_dashboard(
@@ -114,11 +125,12 @@ def resource_recommendations(
     ro.set_target_capture_rate(target_capture)
     return {
         "target_capture_rate": target_capture,
+        "nrv_total": round(ro.total_nrv, 2),
         "recommendations": ro.get_optimization_recommendations(),
     }
 
 
-# ── Investment Allocation ─────────────────────────────────────
+# ── Investment Allocation (NSB) ───────────────────────────────
 
 @router.get("/investments")
 def investments_dashboard(
@@ -166,7 +178,7 @@ def investment_rankings(
     return {"projects": ia.get_project_scores(w)}
 
 
-# ── National Welfare Index ────────────────────────────────────
+# ── National Welfare Index (SNN-aligned) ──────────────────────
 
 @router.get("/nwi")
 def nwi_dashboard(
@@ -174,12 +186,12 @@ def nwi_dashboard(
 ) -> dict:
     nwi = NationalWelfareIndex()
     sectors = {
-        "Énergie": NWIComponents(6.0, 7.0, 3.0, 5.0, 10.0, 10.0, 10.0, 10.0),
-        "Transport": NWIComponents(5.0, 6.0, 2.5, 4.0, 10.0, 10.0, 10.0, 10.0),
-        "Santé": NWIComponents(7.0, 2.0, 1.0, 6.0, 10.0, 10.0, 10.0, 10.0),
-        "Industrie": NWIComponents(3.0, 8.0, 5.0, 3.0, 10.0, 10.0, 10.0, 10.0),
-        "Agriculture": NWIComponents(6.5, 4.0, 1.5, 7.0, 10.0, 10.0, 10.0, 10.0),
-        "Éducation": NWIComponents(7.5, 5.0, 1.0, 8.0, 10.0, 10.0, 10.0, 10.0),
+        "Énergie": NWIComponents(6.0, 7.0, 3.0, 5.0, 5.0, 15.0, 10.0, 10.0, 10.0, 10.0, 10.0),
+        "Industrie minière": NWIComponents(3.0, 8.0, 5.0, 9.0, 3.0, 20.0, 15.0, 10.0, 10.0, 10.0, 10.0),
+        "Santé": NWIComponents(7.0, 2.0, 1.0, 0.5, 6.0, 5.0, 3.0, 10.0, 10.0, 10.0, 10.0),
+        "Agriculture": NWIComponents(6.5, 4.0, 1.5, 3.0, 7.0, 8.0, 5.0, 10.0, 10.0, 10.0, 10.0),
+        "Forêt": NWIComponents(4.0, 2.5, 0.8, 5.0, 8.0, 6.0, 20.0, 10.0, 10.0, 10.0, 10.0),
+        "Éducation": NWIComponents(7.5, 5.0, 1.0, 0.5, 8.0, 3.0, 2.0, 10.0, 10.0, 10.0, 10.0),
     }
     for name, comp in sectors.items():
         nwi.add_sector(name, comp)
@@ -196,16 +208,20 @@ def compute_nwi(
         consumer_surplus=body.consumer_surplus,
         producer_surplus=body.producer_surplus,
         government_revenue=body.government_revenue,
+        natural_resource_value=body.natural_resource_value,
         sustainability=body.sustainability,
+        dwl_rate=body.dwl_rate,
+        ec_rate=body.ec_rate,
         max_cs=body.max_cs,
         max_ps=body.max_ps,
         max_revenue=body.max_revenue,
+        max_nrv=body.max_nrv,
         max_sustainability=body.max_sustainability,
     )
     return nwi.compute_nwi(comp)
 
 
-# ── Corruption / DWL ──────────────────────────────────────────
+# ── Corruption + Environmental Cost ───────────────────────────
 
 @router.get("/corruption")
 def corruption_dashboard(
@@ -217,14 +233,15 @@ def corruption_dashboard(
 
 @router.get("/corruption/scenarios")
 def corruption_scenarios(
-    reduction_pct: float = Query(25.0, description="DWL reduction percentage"),
+    dwl_reduction: float = Query(25.0, description="DWL reduction percentage"),
+    ec_reduction: float = Query(25.0, description="Environmental cost reduction percentage"),
     _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
 ) -> dict:
     cc = CorruptionCalculator()
-    return cc.scenario_analysis(reduction_pct)
+    return cc.scenario_analysis(dwl_reduction, ec_reduction)
 
 
-# ── Combined MOEG Dashboard ───────────────────────────────────
+# ── Combined MOEG SNN Dashboard ──────────────────────────────
 
 @router.get("/dashboard")
 def moeg_dashboard(
@@ -232,11 +249,9 @@ def moeg_dashboard(
     _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
 ) -> dict:
     wm = WelfareModel()
-    wm.add_sector("Énergie", 4.5, 5.0, 2.0, 1.2)
-    wm.add_sector("Transport", 3.0, 4.0, 1.5, 0.8)
-    wm.add_sector("Santé", 6.0, 1.0, 0.5, 0.3)
-    wm.add_sector("Industrie", 2.0, 6.5, 3.0, 1.5)
-    wm.add_sector("Agriculture", 5.0, 3.0, 1.0, 0.5)
+    wm.add_sector("Énergie", 4.5, 5.0, 2.0, 3.0, 1.2, 0.8)
+    wm.add_sector("Industrie minière", 2.0, 6.5, 3.0, 8.0, 1.5, 1.2)
+    wm.add_sector("Agriculture", 5.0, 3.0, 1.0, 2.0, 0.5, 0.3)
     wm.set_constraints(EconomyConstraints(
         budget_ceiling=10.0, revenue=8.5,
         current_debt_to_gdp=45.0, gdp=55.0, current_inflation=3.0,
@@ -250,15 +265,16 @@ def moeg_dashboard(
     ia.set_budget(budget)
 
     nwi = NationalWelfareIndex()
-    nwi.add_sector("Énergie", NWIComponents(6.0, 7.0, 3.0, 5.0))
-    nwi.add_sector("Industrie", NWIComponents(3.0, 8.0, 5.0, 3.0))
-    nwi.add_sector("Santé", NWIComponents(7.0, 2.0, 1.0, 6.0))
+    nwi.add_sector("Énergie", NWIComponents(6.0, 7.0, 3.0, 5.0, 5.0, 15.0, 10.0))
+    nwi.add_sector("Industrie", NWIComponents(3.0, 8.0, 5.0, 9.0, 3.0, 20.0, 15.0))
+    nwi.add_sector("Santé", NWIComponents(7.0, 2.0, 1.0, 0.5, 6.0, 5.0, 3.0))
 
     cc = CorruptionCalculator()
 
     return {
         "model": "MOEG",
-        "description": "Modele d'Optimisation Economique de la Gouvernance",
+        "description": "Modele d'Optimisation Economique de la Gouvernance — Surplus National Net",
+        "formula": "SNN = CS + PS + GR + NRV - DWL - EC",
         "welfare": wm.get_dashboard(),
         "resources": ro.get_dashboard(),
         "investments": ia.optimize(),

@@ -1,17 +1,17 @@
-"""MOEG Investment Allocator — LP-based budget allocation.
+"""MOEG Investment Allocator — LP-based budget allocation with SNN scoring.
 
-Solves:
-    max  Σ MOEG_score_i * x_i
-    s.t. Σ cost_i * x_i ≤ Budget
-         0 ≤ x_i ≤ 1   (fraction of project funded)
+Scoring dimensions:
+    Maximize: Recettes fiscales, Création d'emplois, Valeur ajoutée locale
+    Minimize: Coût du projet, Corruption estimée, Impact environnemental, Temps de réalisation
 
-MOEG_score = w1*CS_impact + w2*PS_impact + w3*jobs_impact + w4*gdp_impact
-             - w5*corruption_risk
+Net Social Benefit Score:
+    NSB = w1*revenue + w2*jobs + w3*nrv + w4*sustainability
+          - w5*normalized_cost - w6*corruption - w7*env_impact - w8*duration
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 try:
     from scipy.optimize import milp, Bounds, LinearConstraint
@@ -22,46 +22,75 @@ except ImportError:
 
 @dataclass
 class MOEGProject:
-    """A public investment project with MOEG scoring dimensions."""
+    """A public investment project with full MOEG scoring dimensions."""
     name: str
-    cost: float
-    cs_impact: float = 0.0       # Consumer surplus impact (0-1)
-    ps_impact: float = 0.0       # Producer surplus impact (0-1)
-    jobs_impact: float = 0.0     # Job creation score (0-1)
-    gdp_impact: float = 0.0      # GDP growth impact (0-1)
-    corruption_risk: float = 0.0 # Corruption risk (0-1, lower is better)
+    cost: float                          # millions USD — minimize
+    # Maximize
+    revenue_impact: float = 0.0          # Recettes fiscales générées (0-1)
+    jobs_created: int = 0                # Nombre d'emplois créés
+    jobs_score: float = 0.0              # Score emploi normalisé (0-1)
+    local_value_added: float = 0.0       # Valeur ajoutée locale (0-1)
+    # Minimize
+    corruption_risk: float = 0.0         # Risque de corruption estimé (0-1)
+    env_impact: float = 0.0             # Impact environnemental (0-1)
+    duration_months: int = 0             # Temps de réalisation en mois
+    # Context
     sector: str = ""
     province: str = ""
-    sustainability: float = 0.5  # Environmental/social sustainability (0-1)
+    sustainability: float = 0.5         # Soutenabilité globale (0-1)
 
-    def moeg_score(
+    @property
+    def cost_normalized(self) -> float:
+        """Normalized cost (0-1, higher = more expensive)."""
+        return min(1.0, self.cost / 5000)  # 5B = max reference
+
+    @property
+    def duration_normalized(self) -> float:
+        """Normalized duration (0-1, longer = worse)."""
+        return min(1.0, self.duration_months / 120)  # 10 years = max
+
+    @property
+    def jobs_normalized(self) -> float:
+        """Normalized jobs score."""
+        return self.jobs_score
+
+    def nsb_score(
         self,
-        w_cs: float = 0.25,
-        w_ps: float = 0.25,
+        w_revenue: float = 0.15,
         w_jobs: float = 0.20,
-        w_gdp: float = 0.15,
-        w_corruption: float = 0.10,
+        w_nrv: float = 0.20,
         w_sustainability: float = 0.05,
+        w_cost: float = 0.15,
+        w_corruption: float = 0.15,
+        w_env: float = 0.10,
+        w_duration: float = 0.05,
     ) -> float:
-        """Compute MOEG welfare score for this project."""
+        """Net Social Benefit score.
+
+        Positive components (maximize) - Negative components (minimize).
+        """
         return (
-            w_cs * self.cs_impact
-            + w_ps * self.ps_impact
-            + w_jobs * self.jobs_impact
-            + w_gdp * self.gdp_impact
-            - w_corruption * self.corruption_risk
+            w_revenue * self.revenue_impact
+            + w_jobs * self.jobs_normalized
+            + w_nrv * self.local_value_added
             + w_sustainability * self.sustainability
+            - w_cost * self.cost_normalized
+            - w_corruption * self.corruption_risk
+            - w_env * self.env_impact
+            - w_duration * self.duration_normalized
         )
 
     def to_dict(self) -> dict:
         return {
             "name": self.name,
             "cost": self.cost,
-            "cs_impact": self.cs_impact,
-            "ps_impact": self.ps_impact,
-            "jobs_impact": self.jobs_impact,
-            "gdp_impact": self.gdp_impact,
+            "revenue_impact": self.revenue_impact,
+            "jobs_created": self.jobs_created,
+            "jobs_score": self.jobs_score,
+            "local_value_added": self.local_value_added,
             "corruption_risk": self.corruption_risk,
+            "env_impact": self.env_impact,
+            "duration_months": self.duration_months,
             "sector": self.sector,
             "province": self.province,
             "sustainability": self.sustainability,
@@ -70,33 +99,53 @@ class MOEGProject:
 
 # DRC public investment project candidates (costs in millions USD)
 DRC_PROJECT_CANDIDATES: list[dict] = [
-    {"name": "Autoroute Kinshasa-Lubumbashi", "cost": 2500, "cs_impact": 0.8, "ps_impact": 0.9,
-     "jobs_impact": 0.9, "gdp_impact": 0.85, "corruption_risk": 0.6, "sector": "Transport", "province": "Nationale", "sustainability": 0.5},
-    {"name": "Barrage d'Inga III", "cost": 5000, "cs_impact": 0.95, "ps_impact": 0.95,
-     "jobs_impact": 0.7, "gdp_impact": 0.95, "corruption_risk": 0.7, "sector": "Énergie", "province": "Kongo Central", "sustainability": 0.6},
-    {"name": "Réseau électrique national", "cost": 3000, "cs_impact": 0.9, "ps_impact": 0.85,
-     "jobs_impact": 0.8, "gdp_impact": 0.9, "corruption_risk": 0.5, "sector": "Énergie", "province": "Nationale", "sustainability": 0.7},
-    {"name": "Hôpitaux provinciaux (10)", "cost": 800, "cs_impact": 0.85, "ps_impact": 0.3,
-     "jobs_impact": 0.6, "gdp_impact": 0.4, "corruption_risk": 0.3, "sector": "Santé", "province": "Nationale", "sustainability": 0.8},
-    {"name": "Universités techniques (5)", "cost": 600, "cs_impact": 0.7, "ps_impact": 0.6,
-     "jobs_impact": 0.5, "gdp_impact": 0.7, "corruption_risk": 0.2, "sector": "Éducation", "province": "Nationale", "sustainability": 0.9},
-    {"name": "Port minéral de Matadi", "cost": 1200, "cs_impact": 0.5, "ps_impact": 0.9,
-     "jobs_impact": 0.7, "gdp_impact": 0.8, "corruption_risk": 0.5, "sector": "Transport", "province": "Kongo Central", "sustainability": 0.4},
-    {"name": "Usine de transformation cobalt", "cost": 1500, "cs_impact": 0.3, "ps_impact": 0.95,
-     "jobs_impact": 0.85, "gdp_impact": 0.9, "corruption_risk": 0.4, "sector": "Industrie", "province": "Haut-Katanga", "sustainability": 0.3},
-    {"name": "Réseau eau potable (Kinshasa)", "cost": 400, "cs_impact": 0.9, "ps_impact": 0.2,
-     "jobs_impact": 0.4, "gdp_impact": 0.3, "corruption_risk": 0.4, "sector": "Eau", "province": "Kinshasa", "sustainability": 0.8},
-    {"name": "Fibre optique nationale", "cost": 700, "cs_impact": 0.75, "ps_impact": 0.8,
-     "jobs_impact": 0.6, "gdp_impact": 0.85, "corruption_risk": 0.3, "sector": "Numérique", "province": "Nationale", "sustainability": 0.7},
-    {"name": "Parc solaire Nord-Kivu", "cost": 350, "cs_impact": 0.7, "ps_impact": 0.6,
-     "jobs_impact": 0.5, "gdp_impact": 0.5, "corruption_risk": 0.3, "sector": "Énergie", "province": "Nord-Kivu", "sustainability": 0.95},
+    {"name": "Autoroute Kinshasa-Lubumbashi", "cost": 2500, "revenue_impact": 0.7,
+     "jobs_created": 50000, "jobs_score": 0.9, "local_value_added": 0.8,
+     "corruption_risk": 0.6, "env_impact": 0.5, "duration_months": 84,
+     "sector": "Transport", "province": "Nationale", "sustainability": 0.5},
+    {"name": "Barrage d'Inga III", "cost": 5000, "revenue_impact": 0.9,
+     "jobs_created": 30000, "jobs_score": 0.7, "local_value_added": 0.9,
+     "corruption_risk": 0.7, "env_impact": 0.4, "duration_months": 96,
+     "sector": "Énergie", "province": "Kongo Central", "sustainability": 0.6},
+    {"name": "Réseau électrique national", "cost": 3000, "revenue_impact": 0.8,
+     "jobs_created": 40000, "jobs_score": 0.8, "local_value_added": 0.85,
+     "corruption_risk": 0.5, "env_impact": 0.3, "duration_months": 60,
+     "sector": "Énergie", "province": "Nationale", "sustainability": 0.7},
+    {"name": "Hôpitaux provinciaux (10)", "cost": 800, "revenue_impact": 0.3,
+     "jobs_created": 15000, "jobs_score": 0.6, "local_value_added": 0.5,
+     "corruption_risk": 0.3, "env_impact": 0.1, "duration_months": 36,
+     "sector": "Santé", "province": "Nationale", "sustainability": 0.8},
+    {"name": "Universités techniques (5)", "cost": 600, "revenue_impact": 0.4,
+     "jobs_created": 10000, "jobs_score": 0.5, "local_value_added": 0.7,
+     "corruption_risk": 0.2, "env_impact": 0.1, "duration_months": 30,
+     "sector": "Éducation", "province": "Nationale", "sustainability": 0.9},
+    {"name": "Port minéral de Matadi", "cost": 1200, "revenue_impact": 0.6,
+     "jobs_created": 20000, "jobs_score": 0.7, "local_value_added": 0.6,
+     "corruption_risk": 0.5, "env_impact": 0.6, "duration_months": 48,
+     "sector": "Transport", "province": "Kongo Central", "sustainability": 0.4},
+    {"name": "Usine de transformation cobalt", "cost": 1500, "revenue_impact": 0.5,
+     "jobs_created": 25000, "jobs_score": 0.85, "local_value_added": 0.95,
+     "corruption_risk": 0.4, "env_impact": 0.7, "duration_months": 36,
+     "sector": "Industrie", "province": "Haut-Katanga", "sustainability": 0.3},
+    {"name": "Réseau eau potable (Kinshasa)", "cost": 400, "revenue_impact": 0.2,
+     "jobs_created": 8000, "jobs_score": 0.4, "local_value_added": 0.4,
+     "corruption_risk": 0.4, "env_impact": 0.1, "duration_months": 24,
+     "sector": "Eau", "province": "Kinshasa", "sustainability": 0.8},
+    {"name": "Fibre optique nationale", "cost": 700, "revenue_impact": 0.6,
+     "jobs_created": 15000, "jobs_score": 0.6, "local_value_added": 0.8,
+     "corruption_risk": 0.3, "env_impact": 0.1, "duration_months": 30,
+     "sector": "Numérique", "province": "Nationale", "sustainability": 0.7},
+    {"name": "Parc solaire Nord-Kivu", "cost": 350, "revenue_impact": 0.4,
+     "jobs_created": 5000, "jobs_score": 0.5, "local_value_added": 0.5,
+     "corruption_risk": 0.3, "env_impact": 0.05, "duration_months": 18,
+     "sector": "Énergie", "province": "Nord-Kivu", "sustainability": 0.95},
 ]
 
 
 class InvestmentAllocator:
-    """LP-based investment allocator using MOEG welfare scores.
+    """LP-based investment allocator using Net Social Benefit scoring.
 
-    Solves: max Σ score_i * x_i  s.t. Σ cost_i * x_i ≤ Budget
+    Solves: max Σ NSB_i * x_i  s.t. Σ cost_i * x_i ≤ Budget
     """
 
     def __init__(self) -> None:
@@ -114,8 +163,7 @@ class InvestmentAllocator:
         self.budget = budget
 
     def _greedy_optimize(self, weights: dict | None = None) -> dict:
-        """Greedy fallback when scipy is unavailable."""
-        scored = [(p, p.moeg_score(**(weights or {}))) for p in self.projects]
+        scored = [(p, p.nsb_score(**(weights or {}))) for p in self.projects]
         scored.sort(key=lambda x: x[1], reverse=True)
 
         allocation = {}
@@ -148,20 +196,17 @@ class InvestmentAllocator:
         }
 
     def optimize(self, weights: dict | None = None) -> dict:
-        """Run LP optimization for budget allocation."""
         if not HAS_SCIPY or not self.projects:
             return self._greedy_optimize(weights)
 
         n = len(self.projects)
-        scores = [p.moeg_score(**(weights or {})) for p in self.projects]
+        scores = [p.nsb_score(**(weights or {})) for p in self.projects]
         costs = [p.cost for p in self.projects]
 
         try:
             result = milp(
-                c=[-s for s in scores],  # minimize negative = maximize
-                constraints=[
-                    LinearConstraint(A=[[c for c in costs]], ub=self.budget),
-                ],
+                c=[-s for s in scores],
+                constraints=[LinearConstraint(A=[[c for c in costs]], ub=self.budget)],
                 bounds=Bounds(lb=0, ub=1),
             )
 
@@ -190,32 +235,30 @@ class InvestmentAllocator:
         return self._greedy_optimize(weights)
 
     def compare_scenarios(self, budgets: list[float], weights: dict | None = None) -> list[dict]:
-        """Run optimization across multiple budget levels."""
         results = []
         original = self.budget
         for b in sorted(budgets):
             self.budget = b
-            result = self.optimize(weights)
-            results.append(result)
+            results.append(self.optimize(weights))
         self.budget = original
         return results
 
     def get_project_scores(self, weights: dict | None = None) -> list[dict]:
-        """Rank all projects by MOEG score."""
         scored = []
         for p in self.projects:
-            s = p.moeg_score(**(weights or {}))
+            s = p.nsb_score(**(weights or {}))
             scored.append({
                 **p.to_dict(),
-                "moeg_score": round(s, 4),
+                "nsb_score": round(s, 4),
                 "cost_effectiveness": round(s / p.cost * 1_000_000, 2) if p.cost > 0 else 0,
             })
-        scored.sort(key=lambda x: x["moeg_score"], reverse=True)
+        scored.sort(key=lambda x: x["nsb_score"], reverse=True)
         return scored
 
     def get_dashboard(self) -> dict:
         return {
             "model": "InvestmentAllocator",
+            "formula": "NSB = Rev + Emplois + NRV + Sout. - Cout - Corruption - Env - Duree",
             "budget": self.budget,
             "project_count": len(self.projects),
             "has_scipy": HAS_SCIPY,

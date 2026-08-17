@@ -1,8 +1,9 @@
-"""National Welfare Index (NWI) — Composite governance indicator.
+"""National Welfare Index (NWI) — Composite governance indicator aligned with SNN.
 
-NWI = 0.30 * CS_norm + 0.30 * PS_norm + 0.20 * Revenue_norm + 0.20 * Sustainability_norm
+NWI = 0.25*CS + 0.25*PS + 0.15*GR + 0.15*NRV + 0.10*Sustainability - 0.05*DWL_rate - 0.05*EC_rate
 
-Each component is normalized to [0, 100].
+Each component normalized to [0, 100].
+DWL_rate and EC_rate are penalties (lower = better score).
 """
 
 from __future__ import annotations
@@ -12,15 +13,19 @@ from dataclasses import dataclass
 
 @dataclass
 class NWIComponents:
-    """Raw components for NWI calculation."""
+    """Raw components for NWI calculation aligned with SNN."""
     consumer_surplus: float = 0.0
     producer_surplus: float = 0.0
     government_revenue: float = 0.0
+    natural_resource_value: float = 0.0
     sustainability: float = 0.0
-    # Reference values for normalization (max observed)
+    dwl_rate: float = 0.0          # DWL as % of positive value (penalty)
+    ec_rate: float = 0.0           # EC as % of positive value (penalty)
+    # Reference values for normalization
     max_cs: float = 1.0
     max_ps: float = 1.0
     max_revenue: float = 1.0
+    max_nrv: float = 1.0
     max_sustainability: float = 1.0
 
     def normalize(self, value: float, max_val: float) -> float:
@@ -41,12 +46,28 @@ class NWIComponents:
         return round(self.normalize(self.government_revenue, self.max_revenue), 1)
 
     @property
+    def nrv_normalized(self) -> float:
+        return round(self.normalize(self.natural_resource_value, self.max_nrv), 1)
+
+    @property
     def sustainability_normalized(self) -> float:
         return round(self.normalize(self.sustainability, self.max_sustainability), 1)
 
+    @property
+    def dwl_penalty(self) -> float:
+        """DWL rate capped at 100 (penalty component)."""
+        return min(100.0, max(0.0, self.dwl_rate))
+
+    @property
+    def ec_penalty(self) -> float:
+        """EC rate capped at 100 (penalty component)."""
+        return min(100.0, max(0.0, self.ec_rate))
+
 
 class NationalWelfareIndex:
-    """NWI = 0.30*CS + 0.30*PS + 0.20*Revenue + 0.20*Sustainability
+    """NWI aligned with SNN = CS + PS + GR + NRV - DWL - EC.
+
+    NWI = 0.25*CS + 0.25*PS + 0.15*GR + 0.15*NRV + 0.10*Sust - 0.05*DWL% - 0.05*EC%
 
     Score 0-100:
         80-100: Excellent
@@ -57,10 +78,13 @@ class NationalWelfareIndex:
     """
 
     WEIGHTS = {
-        "consumer_surplus": 0.30,
-        "producer_surplus": 0.30,
-        "government_revenue": 0.20,
-        "sustainability": 0.20,
+        "consumer_surplus": 0.25,
+        "producer_surplus": 0.25,
+        "government_revenue": 0.15,
+        "natural_resource_value": 0.15,
+        "sustainability": 0.10,
+        "dwl_penalty": -0.05,
+        "ec_penalty": -0.05,
     }
 
     THRESHOLDS = [
@@ -78,22 +102,28 @@ class NationalWelfareIndex:
         self.sector_scores[name] = components
 
     def compute_nwi(self, components: NWIComponents | None = None) -> dict:
-        """Compute NWI from given components or aggregate from sectors."""
         if components is None:
             components = self._aggregate_sectors()
 
         cs_n = components.cs_normalized
         ps_n = components.ps_normalized
         rev_n = components.revenue_normalized
+        nrv_n = components.nrv_normalized
         sust_n = components.sustainability_normalized
+        dwl_p = components.dwl_penalty
+        ec_p = components.ec_penalty
 
         nwi = (
             self.WEIGHTS["consumer_surplus"] * cs_n
             + self.WEIGHTS["producer_surplus"] * ps_n
             + self.WEIGHTS["government_revenue"] * rev_n
+            + self.WEIGHTS["natural_resource_value"] * nrv_n
             + self.WEIGHTS["sustainability"] * sust_n
+            + self.WEIGHTS["dwl_penalty"] * dwl_p
+            + self.WEIGHTS["ec_penalty"] * ec_p
         )
 
+        nwi = max(0.0, min(100.0, nwi))
         rating = self._rate(nwi)
 
         return {
@@ -118,11 +148,29 @@ class NationalWelfareIndex:
                     "weight": self.WEIGHTS["government_revenue"],
                     "weighted": round(self.WEIGHTS["government_revenue"] * rev_n, 2),
                 },
+                "natural_resource_value": {
+                    "raw": round(components.natural_resource_value, 2),
+                    "normalized": nrv_n,
+                    "weight": self.WEIGHTS["natural_resource_value"],
+                    "weighted": round(self.WEIGHTS["natural_resource_value"] * nrv_n, 2),
+                },
                 "sustainability": {
                     "raw": round(components.sustainability, 2),
                     "normalized": sust_n,
                     "weight": self.WEIGHTS["sustainability"],
                     "weighted": round(self.WEIGHTS["sustainability"] * sust_n, 2),
+                },
+                "dwl_penalty": {
+                    "raw": round(components.dwl_rate, 2),
+                    "normalized": dwl_p,
+                    "weight": self.WEIGHTS["dwl_penalty"],
+                    "weighted": round(self.WEIGHTS["dwl_penalty"] * dwl_p, 2),
+                },
+                "ec_penalty": {
+                    "raw": round(components.ec_rate, 2),
+                    "normalized": ec_p,
+                    "weight": self.WEIGHTS["ec_penalty"],
+                    "weighted": round(self.WEIGHTS["ec_penalty"] * ec_p, 2),
                 },
             },
             "weights": self.WEIGHTS,
@@ -151,10 +199,14 @@ class NationalWelfareIndex:
             consumer_surplus=sum(c.consumer_surplus for c in self.sector_scores.values()) / n,
             producer_surplus=sum(c.producer_surplus for c in self.sector_scores.values()) / n,
             government_revenue=sum(c.government_revenue for c in self.sector_scores.values()) / n,
+            natural_resource_value=sum(c.natural_resource_value for c in self.sector_scores.values()) / n,
             sustainability=sum(c.sustainability for c in self.sector_scores.values()) / n,
+            dwl_rate=sum(c.dwl_rate for c in self.sector_scores.values()) / n,
+            ec_rate=sum(c.ec_rate for c in self.sector_scores.values()) / n,
             max_cs=sum(c.max_cs for c in self.sector_scores.values()) / n,
             max_ps=sum(c.max_ps for c in self.sector_scores.values()) / n,
             max_revenue=sum(c.max_revenue for c in self.sector_scores.values()) / n,
+            max_nrv=sum(c.max_nrv for c in self.sector_scores.values()) / n,
             max_sustainability=sum(c.max_sustainability for c in self.sector_scores.values()) / n,
         )
 
@@ -168,7 +220,7 @@ class NationalWelfareIndex:
         overall = self.compute_nwi()
         return {
             "model": "NationalWelfareIndex",
-            "formula": "NWI = 0.30*CS + 0.30*PS + 0.20*Recettes + 0.20*Durabilite",
+            "formula": "NWI = 0.25*CS + 0.25*PS + 0.15*GR + 0.15*NRV + 0.10*Dur - 0.05*DWL% - 0.05*EC%",
             "overall": overall,
             "sector_count": len(self.sector_scores),
             "sectors": self.get_all_sectors(),

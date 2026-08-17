@@ -132,6 +132,11 @@ class ResourceOptimizer:
     def total_environmental_cost(self) -> float:
         return sum(r.environmental_cost for r in self.resources.values())
 
+    @property
+    def total_nrv(self) -> float:
+        """Total Natural Resource Value — NRV for SNN = CS + PS + GR + NRV - DWL - EC."""
+        return self.total_value_added
+
     def get_optimization_recommendations(self) -> list[dict]:
         """Generate recommendations to maximize value-added."""
         recommendations = []
