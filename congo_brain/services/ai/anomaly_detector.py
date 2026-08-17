@@ -7,12 +7,16 @@ Combines several detection strategies to flag suspicious transactions:
 4. Round-number: suspiciously round amounts (potential fabrication)
 5. Keyword: description contains known suspicious terms
 6. Duplicate: near-identical amounts within the same budget
+
+Enhanced with severity classification, streaming mode, and alert callbacks.
 """
 
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import TYPE_CHECKING, Callable
 
 if TYPE_CHECKING:
     from congo_brain.models.budget import Budget, Transaction
@@ -37,6 +41,35 @@ SUSPICIOUS_KEYWORDS = [
     "non justifie",
     "sans justification",
 ]
+
+
+class Severity(str, Enum):
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+@dataclass
+class AnomalyResult:
+    """Structured anomaly detection result."""
+    transaction_id: int
+    severity: Severity
+    score: float
+    reasons: list[str]
+    budget_id: int | None = None
+    amount: float = 0.0
+
+
+@dataclass
+class DetectionSummary:
+    """Summary of anomaly detection run."""
+    total_transactions: int = 0
+    anomalies_detected: int = 0
+    anomaly_rate: float = 0.0
+    by_severity: dict[str, int] = field(default_factory=dict)
+    rules_applied: list[str] = field(default_factory=list)
+    top_anomalies: list[AnomalyResult] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -187,6 +220,94 @@ def _duplicate_flags(transactions: list[Transaction]) -> dict[int, list[str]]:
                         f"Montant quasi-identique a {t1.reference_number} ({t1.amount:,.0f} FC)"
                     )
     return flags
+
+
+# ---------------------------------------------------------------------------
+# Severity classification
+# ---------------------------------------------------------------------------
+
+
+def _classify_severity(score: float, reasons: list[str]) -> Severity:
+    """Classify anomaly severity based on score and reason content."""
+    combined = " ".join(reasons).lower()
+
+    if score >= 0.7 or "detournement" in combined or "fictif" in combined:
+        return Severity.CRITICAL
+    if score >= 0.5 or "depasse" in combined or "surfactur" in combined:
+        return Severity.HIGH
+    if score >= 0.3:
+        return Severity.MEDIUM
+    return Severity.LOW
+
+
+# ---------------------------------------------------------------------------
+# Streaming analysis
+# ---------------------------------------------------------------------------
+
+
+def analyze_transaction_stream(
+    transactions: list[Transaction],
+    budgets: list[Budget] | None = None,
+    on_anomaly: Callable[[AnomalyResult], None] | None = None,
+    threshold: float = 2.0,
+) -> DetectionSummary:
+    """Process transactions one at a time, calling on_anomaly for each flagged.
+
+    This is useful for real-time monitoring where transactions arrive
+    incrementally and you want to trigger alerts immediately.
+
+    Args:
+        transactions: list of Transaction ORM objects.
+        budgets: optional list of Budget ORM objects.
+        on_anomaly: callback invoked for each anomaly detected.
+        threshold: z-score threshold.
+
+    Returns:
+        DetectionSummary with overall statistics.
+    """
+    summary = DetectionSummary(
+        total_transactions=len(transactions),
+        rules_applied=[
+            "z-score (ecart statistique global)",
+            "z-score intra-budget (ecart au sein du meme budget)",
+            "mots-cles suspects (description)",
+            "montants ronds (zeros consecutifs)",
+            "doublons (montants quasi-identiques)",
+            "depassement budgetaire (depense > allocation)",
+            "ratio budget (transaction > 40% du budget)",
+        ],
+    )
+
+    if not transactions:
+        return summary
+
+    # Run full detection to get scores
+    anomalies = detect_anomalies(transactions, budgets=budgets, threshold=threshold)
+    summary.anomalies_detected = len(anomalies)
+    summary.anomaly_rate = round(len(anomalies) / len(transactions) * 100, 1)
+
+    budget_map = {b.id: b for b in (budgets or [])}
+
+    for t in anomalies:
+        reasons = [r for r in (t.anomaly_reason or "").split(" | ") if r]
+        severity = _classify_severity(t.anomaly_score, reasons)
+        summary.by_severity[severity.value] = summary.by_severity.get(severity.value, 0) + 1
+
+        result = AnomalyResult(
+            transaction_id=t.id,
+            severity=severity,
+            score=t.anomaly_score,
+            reasons=reasons,
+            budget_id=t.budget_id,
+            amount=t.amount,
+        )
+        summary.top_anomalies.append(result)
+
+        if on_anomaly:
+            on_anomaly(result)
+
+    summary.top_anomalies.sort(key=lambda x: x.score, reverse=True)
+    return summary
 
 
 # ---------------------------------------------------------------------------

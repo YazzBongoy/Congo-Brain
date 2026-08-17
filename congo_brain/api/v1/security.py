@@ -36,6 +36,26 @@ def security_dashboard(
     return svc.get_dashboard()
 
 
+@router.get("/trends")
+def security_trends(
+    group_by: str = Query("month", description="Time grouping: 'month' or 'week'"),
+    svc: SecurityService = Depends(_svc),
+    _user: dict = Depends(require_permission(Permission.SECURITY_READ)),
+) -> dict:
+    """Get risk trends over time."""
+    return svc.get_trends(group_by=group_by)
+
+
+@router.get("/compare")
+def compare_provinces(
+    top_n: int = Query(5, description="Number of top provinces to compare"),
+    svc: SecurityService = Depends(_svc),
+    _user: dict = Depends(require_permission(Permission.SECURITY_READ)),
+) -> dict:
+    """Compare risk levels across provinces."""
+    return svc.compare_provinces(top_n=top_n)
+
+
 @router.post("/alerts", response_model=SecurityAlertOut, status_code=201)
 def create_alert(
     body: SecurityAlertCreate,

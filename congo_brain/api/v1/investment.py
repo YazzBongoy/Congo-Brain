@@ -40,6 +40,21 @@ def optimize_portfolio(
     return result
 
 
+@router.get("/scenarios")
+def compare_scenarios(
+    budgets: str = Query(..., description="Comma-separated budget limits (e.g. 100000000,500000000,1000000000)"),
+    svc: InvestmentService = Depends(_svc),
+    _user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
+) -> dict:
+    """Compare optimization results across multiple budget scenarios."""
+    try:
+        budget_limits = [float(b.strip()) for b in budgets.split(",")]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid budget format. Use comma-separated numbers.")
+    results = svc.compare_scenarios(budget_limits)
+    return {"scenarios": results}
+
+
 @router.get("/summary")
 def investment_summary(
     svc: InvestmentService = Depends(_svc),

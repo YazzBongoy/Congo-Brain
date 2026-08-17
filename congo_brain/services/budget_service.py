@@ -117,6 +117,45 @@ class BudgetService:
             "anomalies": anomalies,
         }
 
+    def run_anomaly_detection_enhanced(self, threshold: float = 2.0) -> dict:
+        """Run anomaly detection with severity classification and summary."""
+        from congo_brain.services.ai.anomaly_detector import analyze_transaction_stream
+
+        transactions = self.db.query(Transaction).all()
+        if not transactions:
+            return {
+                "total_transactions": 0,
+                "anomalies_detected": 0,
+                "anomaly_rate": 0.0,
+                "by_severity": {},
+                "top_anomalies": [],
+                "rules_applied": [],
+            }
+
+        budgets = self.db.query(Budget).all()
+        summary = analyze_transaction_stream(
+            transactions, budgets=budgets, threshold=threshold,
+        )
+        self.db.commit()
+
+        return {
+            "total_transactions": summary.total_transactions,
+            "anomalies_detected": summary.anomalies_detected,
+            "anomaly_rate": summary.anomaly_rate,
+            "by_severity": summary.by_severity,
+            "top_anomalies": [
+                {
+                    "transaction_id": a.transaction_id,
+                    "severity": a.severity.value,
+                    "score": a.score,
+                    "reasons": a.reasons,
+                    "amount": a.amount,
+                }
+                for a in summary.top_anomalies[:10]
+            ],
+            "rules_applied": summary.rules_applied,
+        }
+
     def get_ministry_summary(self) -> list[dict]:
         rows = (
             self.db.query(

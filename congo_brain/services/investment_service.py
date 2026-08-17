@@ -37,6 +37,12 @@ class InvestmentService:
         investments = self.db.query(Investment).filter(Investment.status.in_(["planned", "in_progress"])).all()
         return optimize_portfolio(investments, budget_limit)
 
+    def compare_scenarios(self, budget_limits: list[float]) -> list[dict]:
+        """Run optimization across multiple budget scenarios."""
+        from congo_brain.services.ai.investment_optimizer import compare_scenarios
+        investments = self.db.query(Investment).filter(Investment.status.in_(["planned", "in_progress"])).all()
+        return compare_scenarios(investments, budget_limits)
+
     def get_summary(self) -> dict:
         investments = self.db.query(Investment).all()
         if not investments:

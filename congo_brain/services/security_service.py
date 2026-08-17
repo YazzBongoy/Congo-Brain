@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from congo_brain.models.security_alert import SecurityAlert
-from congo_brain.services.ai.risk_analyzer import analyze_risk_by_province
+from congo_brain.services.ai.risk_analyzer import analyze_risk_by_province, compare_provinces, compute_risk_trends
 
 
 class SecurityService:
@@ -80,3 +80,15 @@ class SecurityService:
             "avg_risk_score": round(sum(a.risk_score for a in alerts) / len(alerts), 1),
             "by_province": by_province,
         }
+
+    def get_trends(self, group_by: str = "month") -> dict:
+        """Get risk trends over time."""
+        alerts = self.db.query(SecurityAlert).all()
+        trends = compute_risk_trends(alerts, group_by=group_by)
+        return {"group_by": group_by, "trends": trends}
+
+    def compare_provinces(self, top_n: int = 5) -> dict:
+        """Compare risk levels across top N provinces."""
+        alerts = self.db.query(SecurityAlert).all()
+        province_risks = analyze_risk_by_province(alerts)
+        return compare_provinces(province_risks, top_n=top_n)

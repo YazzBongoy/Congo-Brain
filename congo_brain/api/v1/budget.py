@@ -45,6 +45,16 @@ def detect_anomalies(
     return report
 
 
+@router.get("/anomalies/summary")
+def anomaly_summary(
+    threshold: float = Query(2.0, description="Z-score threshold"),
+    svc: BudgetService = Depends(_svc),
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+) -> dict:
+    """Get anomaly detection summary with severity classification."""
+    return svc.run_anomaly_detection_enhanced(threshold=threshold)
+
+
 @router.get("/summary")
 def ministry_summary(
     svc: BudgetService = Depends(_svc),
