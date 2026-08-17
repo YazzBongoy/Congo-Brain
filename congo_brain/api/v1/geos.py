@@ -303,3 +303,42 @@ def predict_scenario(scenario_key: str, years: int = 10) -> dict:
         raise HTTPException(status_code=404, detail=f"Scénario inconnu: {scenario_key}")
     r = m.project(SCENARIOS[scenario_key], years)
     return r.to_dict()
+
+
+# ── Reports ────────────────────────────────────────────────────
+
+from fastapi.responses import Response
+
+from congo_brain.services.ia_gov.reports import generate_snn_pdf, generate_snn_excel
+
+
+@router.get("/reports/snn.pdf")
+def download_snn_pdf(scenario: str = "baseline", years: int = 10) -> Response:
+    """Télécharger le rapport SNN en PDF."""
+    _ensure_loaded()
+    predictions = None
+    if scenario in SCENARIOS:
+        m = _ensure_pred()
+        predictions = m.project(SCENARIOS[scenario], years).to_dict()
+    pdf_bytes = generate_snn_pdf(_engine, predictions)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=GEOS_Rapport_SNN_{scenario}.pdf"},
+    )
+
+
+@router.get("/reports/snn.xlsx")
+def download_snn_excel(scenario: str = "baseline", years: int = 10) -> Response:
+    """Télécharger le rapport SNN en Excel."""
+    _ensure_loaded()
+    predictions = None
+    if scenario in SCENARIOS:
+        m = _ensure_pred()
+        predictions = m.project(SCENARIOS[scenario], years).to_dict()
+    xlsx_bytes = generate_snn_excel(_engine, predictions)
+    return Response(
+        content=xlsx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=GEOS_Rapport_SNN_{scenario}.xlsx"},
+    )
