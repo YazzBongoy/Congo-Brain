@@ -199,15 +199,20 @@ GET  /roles                        # Liste des rôles
 - **Python 3.11+**
 - **FastAPI** — API REST asynchrone
 - **SQLAlchemy 2.x** — ORM avec migrations Alembic
-- **PostgreSQL** — base de données (SQLite pour tests)
+- **PostgreSQL 16** — base de données
+- **Keycloak 24** — gestion des identités et authentification SSO
 - **bcrypt** — hachage des mots de passe
 - **python-jose** — tokens JWT
 - **scipy** — optimisation LP/MILP (greedy fallback)
+- **Docker + Docker Compose** — conteneurisation
+- **GitHub Actions** — CI/CD (tests + build Docker)
 - **Typer + Rich** — CLI
 - **slowapi** — rate limiting
 - **pytest** — 179 tests
 
 ## Installation
+
+### Développement local
 
 ```bash
 git clone https://github.com/YazzBongoy/Congo-Brain.git
@@ -215,6 +220,27 @@ cd Congo-Brain
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
+# Éditer .env avec vos paramètres
+```
+
+### Docker (recommandé)
+
+```bash
+git clone https://github.com/YazzBongoy/Congo-Brain.git
+cd Congo-Brain
+docker compose up -d
+```
+
+Cela lance :
+- **PostgreSQL** sur `localhost:5432`
+- **Keycloak** sur `localhost:8080` (admin / admin_secret_2026)
+- **Congo-Brain API** sur `localhost:8000`
+
+Initialiser Keycloak :
+
+```bash
+docker exec -it congo-brain-keycloak bash /opt/keycloak/init.sh
 ```
 
 ## Utilisation
@@ -222,8 +248,13 @@ pip install -r requirements.txt
 ### API
 
 ```bash
+# Sans Docker
 uvicorn congo_brain.api.server:app --reload
+
+# Avec Docker
+docker compose up app
 # → http://localhost:8000/docs (Swagger UI)
+# → http://localhost:8000/health (Health check)
 ```
 
 ### CLI
@@ -238,6 +269,15 @@ congo-brain --help
 pytest tests/ -v
 # 179 passed
 ```
+
+### Keycloak (SSO)
+
+Quand `KEYCLOAK_ENABLED=true` :
+- L'authentification utilise les tokens Keycloak (RS256, JWKS)
+- Les rôles Keycloak (admin, analyst, viewer)映射 vers les rôles internes
+- Fallback sur JWT local si Keycloak est désactivé
+
+Console d'administration : `http://localhost:8080/admin`
 
 ## Modèle de données
 
@@ -278,9 +318,10 @@ pytest tests/ -v
 - [x] MOEG — Moteur économique (SNN, NWI, allocation LP/MILP)
 - [x] IA GOV — 8 modules (optimisation, CS, PS, ressources, gouvernance, corruption, jumeau numérique, IA décisionnelle)
 - [x] GEOS — 14 entités + moteur SNN unifié
-- [ ] Phase 2 — React UI, Keycloak, Docker Compose
-- [ ] Phase 3 — Kubernetes, monitoring, CI/CD
-- [ ] Phase 4 — Données réelles RDC, modèle prédictif
+- [x] Phase 2 — Docker Compose, Keycloak SSO, CI/CD GitHub Actions
+- [ ] Phase 3 — React UI, monitoring, Prometheus/Grafana
+- [ ] Phase 4 — Kubernetes, Helm charts, auto-scaling
+- [ ] Phase 5 — Données réelles RDC, modèle prédictif
 
 ## Licence
 

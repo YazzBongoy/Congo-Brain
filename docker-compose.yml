@@ -1,0 +1,81 @@
+version: "3.9"
+
+services:
+  # ── PostgreSQL ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: congo-brain-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: congo_brain
+      POSTGRES_USER: congo
+      POSTGRES_PASSWORD: congo_secret_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U congo -d congo_brain"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Keycloak ───────────────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: congo-brain-keycloak
+    restart: unless-stopped
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin_secret_2026
+      KC_DB: postgres
+      KC_DB_URL_HOST: postgres
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: keycloak
+      KC_DB_USERNAME: congo
+      KC_DB_PASSWORD: congo_secret_2026
+      KC_HOSTNAME: localhost
+      KC_HTTP_PORT: 8080
+      KC_PROXY: edge
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -n 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q '200'"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  # ── Congo-Brain API ────────────────────────────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: congo-brain-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg2://congo:congo_secret_2026@postgres:5432/congo_brain
+      SECRET_KEY: super-secret-key-change-in-production
+      KEYCLOAK_SERVER_URL: http://keycloak:8080
+      KEYCLOAK_REALM: congo-brain
+      KEYCLOAK_CLIENT_ID: congo-brain-api
+      KEYCLOAK_CLIENT_SECRET: ""
+      ENVIRONMENT: development
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  pgdata:
