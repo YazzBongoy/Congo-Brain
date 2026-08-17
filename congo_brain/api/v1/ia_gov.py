@@ -1,94 +1,304 @@
-"""IA GOV API — Intelligence Artificielle pour la Gouvernance.
+"""IA GOV API — Intelligence Artificielle pour la Gouvernance (8 modules).
 
-Pipeline: Collecte → Intelligence → Optimisation → Dashboard → Décision
+Modules:
+    1. Resource Optimization Engine
+    2. Consumer Surplus Engine
+    3. Producer Surplus Engine
+    4. National Resource Engine
+    5. Governance Score
+    6. Corruption Detector
+    7. National Digital Twin
+    8. Decision AI
 
 Endpoints:
-    /api/v1/ia-gov/dashboard       — Tableau de bord complet
-    /api/v1/ia-gov/welfare         — État du Surplus National Net
-    /api/v1/ia-gov/sectors         — Analyse sectorielle CS/PS/GR
-    /api/v1/ia-gov/decisions       — Support décisionnel + optimisation
-    /api/v1/ia-gov/alerts          — Alertes de gouvernance
-    /api/v1/ia-gov/recommendations — Recommandations d'optimisation
-    /api/v1/ia-gov/historical      — Tendances historiques
+    /api/v1/ia-gov/dashboard          — Vue complète
+    /api/v1/ia-gov/optimizer          — Moteur d'optimisation SNN
+    /api/v1/ia-gov/consumer-surplus   — CS par service public
+    /api/v1/ia-gov/producer-surplus   — PS par entreprise
+    /api/v1/ia-gov/resources          — Mines et ressources
+    /api/v1/ia-gov/governance         — Scores ministères
+    /api/v1/ia-gov/corruption         — Détection anomalies
+    /api/v1/ia-gov/twin               — Jumeau numérique RDC
+    /api/v1/ia-gov/decision           — IA décisionnelle
 """
 
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 
 from congo_brain.core.rbac import Permission
 from congo_brain.core.security import require_permission
-from congo_brain.services.ia_gov.dashboard import GovDashboard
+from congo_brain.services.ia_gov.resource_optimizer import ResourceOptimizationEngine
+from congo_brain.services.ia_gov.consumer_surplus import ConsumerSurplusEngine
+from congo_brain.services.ia_gov.producer_surplus import ProducerSurplusEngine
+from congo_brain.services.ia_gov.national_resource import NationalResourceEngine
+from congo_brain.services.ia_gov.governance_score import GovernanceScoreEngine
+from congo_brain.services.ia_gov.corruption_detector import CorruptionDetectionEngine
+from congo_brain.services.ia_gov.digital_twin import NationalDigitalTwin
+from congo_brain.services.ia_gov.decision_ai import DecisionAI
+from congo_brain.services.ia_gov.collectors import DataCollector
 
 router = APIRouter(prefix="/ia-gov", tags=["IA GOV"])
 
 
-def _dashboard() -> GovDashboard:
-    return GovDashboard()
+class DecisionRequest(BaseModel):
+    question: str
+    budget: float = 500.0
 
+
+class PolicySimulation(BaseModel):
+    policy_name: str
+    sector_changes: dict[str, dict]
+
+
+class InvestmentSimulation(BaseModel):
+    province: str
+    sector: str
+    amount: float
+
+
+# ── Full Dashboard ─────────────────────────────────────────────
 
 @router.get("/dashboard")
-def ia_gov_dashboard(
-    budget: float = Query(10_000, description="Budget d'investissement (M USD)"),
+def ia_gov_full_dashboard(
+    budget: float = Query(10_000, description="Budget M USD"),
     _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
 ) -> dict:
-    """Tableau de bord complet IA GOV — pipeline complet."""
-    return _dashboard().run_full_analysis(budget)
+    """Vue complète des 8 modules IA GOV."""
+    collector = DataCollector()
+    collector.load_drc_baseline()
 
+    optimizer = ResourceOptimizationEngine()
+    optimizer.load_drc_baseline()
 
-@router.get("/welfare")
-def welfare_status(
-    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
-) -> dict:
-    """État du Surplus National Net national."""
-    return _dashboard().get_welfare_status()
+    cs_engine = ConsumerSurplusEngine()
+    cs_engine.load_baseline()
 
+    ps_engine = ProducerSurplusEngine()
+    ps_engine.load_baseline()
 
-@router.get("/sectors")
-def sector_analysis(
-    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
-) -> dict:
-    """Analyse sectorielle détaillée: CS, PS, GR, NRV, DWL, EC."""
-    sectors = _dashboard().get_sector_analysis()
-    return {"sector_count": len(sectors), "sectors": sectors}
+    resource_engine = NationalResourceEngine()
+    resource_engine.load_baseline()
 
+    gov_score = GovernanceScoreEngine()
+    gov_score.load_baseline()
 
-@router.get("/decisions")
-def decision_support(
-    budget: float = Query(10_000, description="Budget d'investissement (M USD)"),
-    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
-) -> dict:
-    """Support décisionnel: allocation optimale + scénarios + sensibilité."""
-    return _dashboard().get_decision_support(budget)
+    corruption = CorruptionDetectionEngine()
+    corruption.load_baseline()
 
+    twin = NationalDigitalTwin()
+    twin.load_baseline()
 
-@router.get("/alerts")
-def governance_alerts(
-    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
-) -> dict:
-    """Alertes de gouvernance basées sur les données."""
-    alerts = _dashboard().get_alerts()
+    decision = DecisionAI()
+
     return {
-        "count": len(alerts),
-        "critical": len([a for a in alerts if a["level"] == "critique"]),
-        "alerts": alerts,
+        "model": "IA GOV",
+        "pipeline": "Collecte → Intelligence → Optimisation → Décision",
+        "modules": {
+            "optimizer": optimizer.get_dashboard(),
+            "consumer_surplus": cs_engine.get_dashboard(),
+            "producer_surplus": ps_engine.get_dashboard(),
+            "resources": resource_engine.get_dashboard(),
+            "governance_score": gov_score.get_dashboard(),
+            "corruption": corruption.get_dashboard(),
+            "digital_twin": twin.get_dashboard(),
+            "decision_ai": decision.get_dashboard(),
+        },
+        "summary": {
+            "national_welfare": round(optimizer.total_welfare, 2),
+            "total_cs": round(cs_engine.total_cs, 2),
+            "total_ps": round(ps_engine.total_ps, 2),
+            "resource_value": round(resource_engine.total_gross_value, 2),
+            "governance_score": gov_score.national_governance_score,
+            "corruption_risk": round(corruption.total_amount_at_risk, 2),
+            "provinces": len(twin.provinces),
+        },
     }
 
 
-@router.get("/recommendations")
-def recommendations(
+# ── Module 1: Resource Optimization Engine ─────────────────────
+
+@router.get("/optimizer")
+def optimizer_dashboard(
     _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
 ) -> dict:
-    """Recommandations d'optimisation basées sur l'analyse SNN."""
-    recs = _dashboard().get_recommendations()
-    return {"count": len(recs), "recommendations": recs}
+    engine = ResourceOptimizationEngine()
+    engine.load_drc_baseline()
+    return engine.get_dashboard()
 
 
-@router.get("/historical")
-def historical_trends(
-    years: int = Query(5, description="Nombre d'années historiques"),
+@router.post("/optimizer/simulate")
+def simulate_policy(
+    body: PolicySimulation,
+    _user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
+) -> dict:
+    engine = ResourceOptimizationEngine()
+    engine.load_drc_baseline()
+    return engine.simulate_policy(body.policy_name, body.sector_changes)
+
+
+# ── Module 2: Consumer Surplus Engine ──────────────────────────
+
+@router.get("/consumer-surplus")
+def consumer_surplus_dashboard(
     _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
 ) -> dict:
-    """Tendances historiques (PIB, pauvreté, électricité, etc.)."""
-    data = _dashboard().get_historical(years)
-    return {"years": len(data), "data": data}
+    engine = ConsumerSurplusEngine()
+    engine.load_baseline()
+    return engine.get_dashboard()
+
+
+@router.get("/consumer-surplus/ranking")
+def cs_ranking(
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+) -> dict:
+    engine = ConsumerSurplusEngine()
+    engine.load_baseline()
+    return {"services": engine.get_cs_ranking()}
+
+
+# ── Module 3: Producer Surplus Engine ──────────────────────────
+
+@router.get("/producer-surplus")
+def producer_surplus_dashboard(
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+) -> dict:
+    engine = ProducerSurplusEngine()
+    engine.load_baseline()
+    return engine.get_dashboard()
+
+
+@router.get("/producer-surplus/ranking")
+def ps_ranking(
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+) -> dict:
+    engine = ProducerSurplusEngine()
+    engine.load_baseline()
+    return {"enterprises": engine.get_ps_ranking()}
+
+
+@router.post("/producer-surplus/simulate-reform")
+def simulate_reform(
+    reform_name: str = Query("Réforme fiscale"),
+    tax_reduction: float = Query(0.1),
+    admin_reduction: float = Query(0.1),
+    corruption_reduction: float = Query(0.1),
+    _user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
+) -> dict:
+    engine = ProducerSurplusEngine()
+    engine.load_baseline()
+    return engine.simulate_reform(reform_name, tax_reduction, admin_reduction, corruption_reduction)
+
+
+# ── Module 4: National Resource Engine ─────────────────────────
+
+@router.get("/resources")
+def resources_dashboard(
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+) -> dict:
+    engine = NationalResourceEngine()
+    engine.load_baseline()
+    return engine.get_dashboard()
+
+
+@router.get("/resources/mineral/{mineral}")
+def mineral_breakdown(
+    mineral: str,
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+) -> dict:
+    engine = NationalResourceEngine()
+    engine.load_baseline()
+    breakdown = engine.get_mineral_breakdown()
+    return {"mineral": mineral, "data": breakdown.get(mineral, {})}
+
+
+# ── Module 5: Governance Score ─────────────────────────────────
+
+@router.get("/governance")
+def governance_dashboard(
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+) -> dict:
+    engine = GovernanceScoreEngine()
+    engine.load_baseline()
+    return engine.get_dashboard()
+
+
+@router.get("/governance/ranking")
+def governance_ranking(
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+) -> dict:
+    engine = GovernanceScoreEngine()
+    engine.load_baseline()
+    return {"ministries": engine.get_ranking()}
+
+
+# ── Module 6: Corruption Detector ─────────────────────────────
+
+@router.get("/corruption")
+def corruption_dashboard(
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+) -> dict:
+    engine = CorruptionDetectionEngine()
+    engine.load_baseline()
+    return engine.get_dashboard()
+
+
+@router.get("/corruption/risk-summary")
+def corruption_risk_summary(
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+) -> dict:
+    engine = CorruptionDetectionEngine()
+    engine.load_baseline()
+    return engine.get_risk_summary()
+
+
+# ── Module 7: National Digital Twin ───────────────────────────
+
+@router.get("/twin")
+def twin_dashboard(
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+) -> dict:
+    engine = NationalDigitalTwin()
+    engine.load_baseline()
+    return engine.get_dashboard()
+
+
+@router.post("/twin/simulate")
+def simulate_investment(
+    body: InvestmentSimulation,
+    _user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
+) -> dict:
+    engine = NationalDigitalTwin()
+    engine.load_baseline()
+    return engine.simulate_investment(body.province, body.sector, body.amount)
+
+
+@router.get("/twin/compare")
+def compare_provinces(
+    top_n: int = Query(5),
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+) -> dict:
+    engine = NationalDigitalTwin()
+    engine.load_baseline()
+    return {"provinces": engine.compare_provinces(top_n)}
+
+
+# ── Module 8: Decision AI ─────────────────────────────────────
+
+@router.post("/decision")
+def ask_decision(
+    body: DecisionRequest,
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+) -> dict:
+    ai = DecisionAI()
+    result = ai.answer(body.question, body.budget)
+    return result.to_dict()
+
+
+@router.get("/decision/topics")
+def decision_topics(
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+) -> dict:
+    ai = DecisionAI()
+    return ai.get_dashboard()
