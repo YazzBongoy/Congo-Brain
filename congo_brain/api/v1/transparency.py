@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from congo_brain.core.database import get_db
-from congo_brain.core.security import get_current_user, require_role
+from congo_brain.core.rbac import Permission
+from congo_brain.core.security import require_permission
 from congo_brain.schemas.transparency import TransparencyReportCreate, TransparencyReportOut
 from congo_brain.services.transparency_service import TransparencyService
 
@@ -20,7 +21,7 @@ def list_reports(
     ministry: str | None = Query(None),
     status: str | None = Query(None),
     svc: TransparencyService = Depends(_svc),
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_permission(Permission.TRANSPARENCY_READ)),
 ) -> dict:
     reports = svc.list_reports(ministry, status)
     return {"count": len(reports), "reports": [TransparencyReportOut.model_validate(r).model_dump() for r in reports]}
@@ -29,7 +30,7 @@ def list_reports(
 @router.get("/dashboard")
 def transparency_dashboard(
     svc: TransparencyService = Depends(_svc),
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_permission(Permission.TRANSPARENCY_READ)),
 ) -> dict:
     return svc.get_dashboard()
 
@@ -38,7 +39,7 @@ def transparency_dashboard(
 def create_report(
     body: TransparencyReportCreate,
     svc: TransparencyService = Depends(_svc),
-    _user: dict = Depends(require_role("admin", "analyst")),
+    _user: dict = Depends(require_permission(Permission.TRANSPARENCY_WRITE)),
 ) -> TransparencyReportOut:
     report = svc.create_report(**body.model_dump())
     return TransparencyReportOut.model_validate(report)
@@ -48,7 +49,7 @@ def create_report(
 def get_report(
     report_id: int,
     svc: TransparencyService = Depends(_svc),
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_permission(Permission.TRANSPARENCY_READ)),
 ) -> TransparencyReportOut:
     report = svc.get_report(report_id)
     if not report:

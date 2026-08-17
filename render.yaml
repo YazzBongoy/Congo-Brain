@@ -9,10 +9,21 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
-        value: sqlite:////app/congo_brain.db
+        fromDatabase:
+          name: congo-brain-db
+          property: connectionString
+      - key: ENVIRONMENT
+        value: production
       - key: ANOMALY_THRESHOLD
         value: "0.7"
       - key: RISK_SCORE_THRESHOLD
         value: "75.0"
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "60"
     healthCheckPath: /health
     autoDeploy: true
+
+  - type: pgsql
+    name: congo-brain-db
+    databaseName: congo_brain
+    plan: starter

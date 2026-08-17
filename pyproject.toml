@@ -18,6 +18,9 @@ sqlalchemy = ">=2.0.0"
 python-jose = {version = ">=3.3.0", extras = ["cryptography"]}
 bcrypt = ">=4.0.0"
 alembic = ">=1.13.0"
+psycopg2-binary = ">=2.9.9"
+slowapi = ">=0.1.9"
+email-validator = ">=2.0.0"
 
 [tool.poetry.scripts]
 congo-brain = "congo_brain.cli.app:app"

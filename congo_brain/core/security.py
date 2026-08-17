@@ -9,6 +9,7 @@ from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from congo_brain.core.config import JWT_ALGORITHM, JWT_EXPIRE_MINUTES, SECRET_KEY
+from congo_brain.core.rbac import Permission, has_permission
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -55,6 +56,21 @@ def require_role(*allowed_roles: str) -> dict:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Role '{current_user.get('role')}' not in {allowed_roles}",
+            )
+        return current_user
+
+    return _check
+
+
+def require_permission(permission: Permission) -> dict:
+    """Dependency factory that enforces a specific permission."""
+
+    def _check(current_user: dict = Depends(get_current_user)) -> dict:
+        user_role = current_user.get("role", "")
+        if not has_permission(user_role, permission):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission '{permission.value}' required",
             )
         return current_user
 

@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from congo_brain.core.database import get_db
-from congo_brain.core.security import get_current_user, require_role
+from congo_brain.core.rbac import Permission
+from congo_brain.core.security import require_permission
 from congo_brain.schemas.security import SecurityAlertCreate, SecurityAlertOut
 from congo_brain.services.security_service import SecurityService
 
@@ -21,7 +22,7 @@ def list_alerts(
     severity: str | None = Query(None),
     active_only: bool = Query(False),
     svc: SecurityService = Depends(_svc),
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_permission(Permission.SECURITY_READ)),
 ) -> dict:
     alerts = svc.list_alerts(province, severity, active_only)
     return {"count": len(alerts), "alerts": [SecurityAlertOut.model_validate(a).model_dump() for a in alerts]}
@@ -30,7 +31,7 @@ def list_alerts(
 @router.get("/dashboard")
 def security_dashboard(
     svc: SecurityService = Depends(_svc),
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_permission(Permission.SECURITY_READ)),
 ) -> dict:
     return svc.get_dashboard()
 
@@ -39,7 +40,7 @@ def security_dashboard(
 def create_alert(
     body: SecurityAlertCreate,
     svc: SecurityService = Depends(_svc),
-    _user: dict = Depends(require_role("admin", "analyst")),
+    _user: dict = Depends(require_permission(Permission.SECURITY_WRITE)),
 ) -> SecurityAlertOut:
     alert = svc.create_alert(**body.model_dump())
     return SecurityAlertOut.model_validate(alert)
@@ -49,7 +50,7 @@ def create_alert(
 def get_alert(
     alert_id: int,
     svc: SecurityService = Depends(_svc),
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_permission(Permission.SECURITY_READ)),
 ) -> SecurityAlertOut:
     alert = svc.get_alert(alert_id)
     if not alert:
@@ -61,7 +62,7 @@ def get_alert(
 def resolve_alert(
     alert_id: int,
     svc: SecurityService = Depends(_svc),
-    _user: dict = Depends(require_role("admin", "analyst")),
+    _user: dict = Depends(require_permission(Permission.SECURITY_RESOLVE)),
 ) -> SecurityAlertOut:
     alert = svc.resolve_alert(alert_id)
     if not alert:

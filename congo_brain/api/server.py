@@ -6,14 +6,20 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from congo_brain import __app_name__, __version__
 from congo_brain.api.v1.router import v1_router
-from congo_brain.core.database import init_db
+from congo_brain.core.config import RATE_LIMIT_PER_MINUTE
+from congo_brain.core.database import check_db_health, init_db
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+limiter = Limiter(key_func=get_remote_address, default_limits=[f"{RATE_LIMIT_PER_MINUTE}/minute"])
 
 
 @asynccontextmanager
@@ -34,6 +40,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -53,5 +62,15 @@ def root() -> FileResponse:
 
 
 @app.get("/health", tags=["Health"])
-def health_check() -> dict:
-    return {"status": "healthy", "app": __app_name__, "version": __version__}
+def health_check() -> JSONResponse:
+    db_ok = check_db_health()
+    status_code = 200 if db_ok else 503
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": "healthy" if db_ok else "degraded",
+            "app": __app_name__,
+            "version": __version__,
+            "database": "ok" if db_ok else "unreachable",
+        },
+    )

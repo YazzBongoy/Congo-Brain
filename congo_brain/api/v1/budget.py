@@ -4,7 +4,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from congo_brain.core.database import get_db
-from congo_brain.core.security import get_current_user, require_role
+from congo_brain.core.rbac import Permission
+from congo_brain.core.security import get_current_user, require_permission
 from congo_brain.schemas.budget import BudgetCreate, BudgetOut, BudgetStatusOut, TransactionCreate, TransactionOut
 from congo_brain.services.budget_service import BudgetService
 
@@ -20,7 +21,7 @@ def list_budgets(
     ministry: str | None = Query(None),
     fiscal_year: int | None = Query(None),
     svc: BudgetService = Depends(_svc),
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
 ) -> dict:
     budgets = svc.list_budgets(ministry, fiscal_year)
     return {"count": len(budgets), "budgets": [BudgetOut.model_validate(b).model_dump() for b in budgets]}
@@ -29,7 +30,7 @@ def list_budgets(
 @router.get("/status", response_model=BudgetStatusOut)
 def budget_status(
     svc: BudgetService = Depends(_svc),
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
 ) -> dict:
     return svc.get_status()
 
@@ -37,7 +38,7 @@ def budget_status(
 @router.get("/anomalies")
 def detect_anomalies(
     svc: BudgetService = Depends(_svc),
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
 ) -> dict:
     report = svc.run_anomaly_detection()
     report["anomalies"] = [TransactionOut.model_validate(t).model_dump() for t in report["anomalies"]]
@@ -47,7 +48,7 @@ def detect_anomalies(
 @router.get("/summary")
 def ministry_summary(
     svc: BudgetService = Depends(_svc),
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
 ) -> dict:
     return {"summary": svc.get_ministry_summary()}
 
@@ -56,7 +57,7 @@ def ministry_summary(
 def create_budget(
     body: BudgetCreate,
     svc: BudgetService = Depends(_svc),
-    _user: dict = Depends(require_role("admin", "analyst")),
+    _user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
 ) -> BudgetOut:
     b = svc.create_budget(body.ministry, body.sector, body.allocated_amount, body.fiscal_year, body.spent_amount)
     return BudgetOut.model_validate(b)
@@ -66,7 +67,7 @@ def create_budget(
 def get_budget(
     budget_id: int,
     svc: BudgetService = Depends(_svc),
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
 ) -> BudgetOut:
     b = svc.get_budget(budget_id)
     if not b:
@@ -78,7 +79,7 @@ def get_budget(
 def list_transactions(
     budget_id: int,
     svc: BudgetService = Depends(_svc),
-    _user: dict = Depends(get_current_user),
+    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
 ) -> dict:
     txns = svc.list_transactions(budget_id)
     return {"count": len(txns), "transactions": [TransactionOut.model_validate(t).model_dump() for t in txns]}
@@ -89,7 +90,7 @@ def create_transaction(
     budget_id: int,
     body: TransactionCreate,
     svc: BudgetService = Depends(_svc),
-    _user: dict = Depends(require_role("admin", "analyst")),
+    _user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
 ) -> TransactionOut:
     if body.budget_id != budget_id:
         raise HTTPException(status_code=400, detail="budget_id in body must match URL")

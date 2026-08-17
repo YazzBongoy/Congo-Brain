@@ -1,6 +1,6 @@
 """Auth request/response schemas."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
 
 class LoginRequest(BaseModel):
@@ -15,9 +15,15 @@ class TokenResponse(BaseModel):
 
 class UserCreate(BaseModel):
     username: str
-    email: str
+    email: EmailStr
     password: str
     role: str = "viewer"
+    ministry: str | None = None
+
+
+class UserUpdate(BaseModel):
+    email: EmailStr | None = None
+    role: str | None = None
     ministry: str | None = None
 
 
@@ -29,3 +35,8 @@ class UserOut(BaseModel):
     ministry: str | None
 
     model_config = {"from_attributes": True}
+
+
+class RoleOut(BaseModel):
+    role: str
+    permissions: list[str]
