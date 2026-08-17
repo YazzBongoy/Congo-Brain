@@ -16,6 +16,7 @@ from congo_brain import __app_name__, __version__
 from congo_brain.api.v1.router import v1_router
 from congo_brain.core.config import RATE_LIMIT_PER_MINUTE
 from congo_brain.core.database import check_db_health, init_db
+from congo_brain.core.monitoring import PrometheusMiddleware, metrics_router
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
@@ -51,7 +52,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(PrometheusMiddleware)
+
 app.include_router(v1_router)
+app.include_router(metrics_router)
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
