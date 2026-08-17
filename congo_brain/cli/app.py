@@ -52,10 +52,12 @@ def main(
 @app.command("health")
 def health() -> None:
     """Verifier l'etat de sante du systeme."""
+    from sqlalchemy import text
+
     from congo_brain.core.database import SessionLocal
     try:
         db = SessionLocal()
-        db.execute("SELECT 1")  # type: ignore[arg-type]
+        db.execute(text("SELECT 1"))
         db.close()
         console.print(Panel(
             "[bold green]Systeme operationnel[/]\nBase de donnees: OK",

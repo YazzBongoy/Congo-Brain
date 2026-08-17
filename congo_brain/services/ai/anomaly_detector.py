@@ -44,7 +44,7 @@ SUSPICIOUS_KEYWORDS = [
 # ---------------------------------------------------------------------------
 
 
-def _zscore_flags(transactions: list[Transaction]) -> dict[int, list[str]]:
+def _zscore_flags(transactions: list[Transaction], thresh: float) -> dict[int, list[str]]:
     """Flag transactions whose amount deviates from the group mean."""
     flags: dict[int, list[str]] = {}
     if len(transactions) < 3:
@@ -57,7 +57,7 @@ def _zscore_flags(transactions: list[Transaction]) -> dict[int, list[str]]:
 
     for t in transactions:
         z = abs(t.amount - mean) / std
-        if z > ZSCORE_THRESHOLD:
+        if z > thresh:
             direction = "superieur" if t.amount > mean else "inferieur"
             flags[t.id] = [
                 f"Z-score {z:.1f} ({direction} a la moyenne de {mean:,.0f} FC)"
@@ -65,7 +65,7 @@ def _zscore_flags(transactions: list[Transaction]) -> dict[int, list[str]]:
     return flags
 
 
-def _per_budget_zscore(transactions: list[Transaction]) -> dict[int, list[str]]:
+def _per_budget_zscore(transactions: list[Transaction], thresh: float) -> dict[int, list[str]]:
     """Z-score analysis within each budget group."""
     flags: dict[int, list[str]] = {}
     by_budget: dict[int, list[Transaction]] = {}
@@ -82,7 +82,7 @@ def _per_budget_zscore(transactions: list[Transaction]) -> dict[int, list[str]]:
 
         for t in txns:
             z = abs(t.amount - mean) / std
-            if z > ZSCORE_THRESHOLD:
+            if z > thresh:
                 flags.setdefault(t.id, []).append(
                     f"Ecart intra-budget (z={z:.1f}, moyenne budget={mean:,.0f} FC)"
                 )
@@ -210,8 +210,7 @@ def detect_anomalies(
         list of transactions flagged as anomalies (with is_anomaly, anomaly_score,
         and anomaly_reason updated).
     """
-    global ZSCORE_THRESHOLD  # noqa: PLW0603
-    ZSCORE_THRESHOLD = threshold
+    zscore_threshold = threshold
 
     if not transactions:
         return []
@@ -223,8 +222,8 @@ def detect_anomalies(
         for tid, reasons in new.items():
             all_flags.setdefault(tid, []).extend(reasons)
 
-    _merge(_zscore_flags(transactions))
-    _merge(_per_budget_zscore(transactions))
+    _merge(_zscore_flags(transactions, zscore_threshold))
+    _merge(_per_budget_zscore(transactions, zscore_threshold))
     _merge(_keyword_flags(transactions))
     _merge(_round_number_flags(transactions))
     _merge(_duplicate_flags(transactions))

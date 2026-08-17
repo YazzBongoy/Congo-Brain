@@ -36,3 +36,9 @@ htmlcov/
 
 # Databases
 *.db
+
+# Virtual environments
+.venv/
+
+# Alembic
+alembic/versions/*.pyc

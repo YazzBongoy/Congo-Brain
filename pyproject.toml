@@ -4,7 +4,7 @@ version = "1.0.0"
 description = "Congo-Brain — Plateforme IA de gouvernance pour la RDC"
 readme = "README.md"
 license = "MIT"
-packages = [{include = "congo_brain"}, {include = "ia_gov"}]
+packages = [{include = "congo_brain"}]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
@@ -16,9 +16,10 @@ pydantic = ">=2.0.0"
 pydantic-settings = ">=2.0.0"
 sqlalchemy = ">=2.0.0"
 python-jose = {version = ">=3.3.0", extras = ["cryptography"]}
+bcrypt = ">=4.0.0"
+alembic = ">=1.13.0"
 
 [tool.poetry.scripts]
-ia-gov = "ia_gov.cli.app:app"
 congo-brain = "congo_brain.cli.app:app"
 
 [tool.poetry.group.dev.dependencies]
@@ -42,3 +43,9 @@ select = ["E", "F", "I", "W"]
 python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from congo_brain.core.database import get_db
+from congo_brain.core.security import get_current_user, require_role
 from congo_brain.schemas.security import SecurityAlertCreate, SecurityAlertOut
 from congo_brain.services.security_service import SecurityService
 
@@ -20,24 +21,36 @@ def list_alerts(
     severity: str | None = Query(None),
     active_only: bool = Query(False),
     svc: SecurityService = Depends(_svc),
+    _user: dict = Depends(get_current_user),
 ) -> dict:
     alerts = svc.list_alerts(province, severity, active_only)
     return {"count": len(alerts), "alerts": [SecurityAlertOut.model_validate(a).model_dump() for a in alerts]}
 
 
 @router.get("/dashboard")
-def security_dashboard(svc: SecurityService = Depends(_svc)) -> dict:
+def security_dashboard(
+    svc: SecurityService = Depends(_svc),
+    _user: dict = Depends(get_current_user),
+) -> dict:
     return svc.get_dashboard()
 
 
 @router.post("/alerts", response_model=SecurityAlertOut, status_code=201)
-def create_alert(body: SecurityAlertCreate, svc: SecurityService = Depends(_svc)) -> SecurityAlertOut:
+def create_alert(
+    body: SecurityAlertCreate,
+    svc: SecurityService = Depends(_svc),
+    _user: dict = Depends(require_role("admin", "analyst")),
+) -> SecurityAlertOut:
     alert = svc.create_alert(**body.model_dump())
     return SecurityAlertOut.model_validate(alert)
 
 
 @router.get("/alerts/{alert_id}", response_model=SecurityAlertOut)
-def get_alert(alert_id: int, svc: SecurityService = Depends(_svc)) -> SecurityAlertOut:
+def get_alert(
+    alert_id: int,
+    svc: SecurityService = Depends(_svc),
+    _user: dict = Depends(get_current_user),
+) -> SecurityAlertOut:
     alert = svc.get_alert(alert_id)
     if not alert:
         raise HTTPException(status_code=404, detail="Security alert not found")
@@ -45,7 +58,11 @@ def get_alert(alert_id: int, svc: SecurityService = Depends(_svc)) -> SecurityAl
 
 
 @router.post("/alerts/{alert_id}/resolve", response_model=SecurityAlertOut)
-def resolve_alert(alert_id: int, svc: SecurityService = Depends(_svc)) -> SecurityAlertOut:
+def resolve_alert(
+    alert_id: int,
+    svc: SecurityService = Depends(_svc),
+    _user: dict = Depends(require_role("admin", "analyst")),
+) -> SecurityAlertOut:
     alert = svc.resolve_alert(alert_id)
     if not alert:
         raise HTTPException(status_code=404, detail="Security alert not found")

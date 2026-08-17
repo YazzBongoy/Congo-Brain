@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from congo_brain.core.database import get_db
-from congo_brain.core.security import create_access_token, hash_password, verify_password
+from congo_brain.core.security import create_access_token, hash_password, require_role, verify_password
 from congo_brain.models.user import User
 from congo_brain.schemas.auth import LoginRequest, TokenResponse, UserCreate, UserOut
 
@@ -35,3 +35,11 @@ def register(body: UserCreate, db: Session = Depends(get_db)) -> User:
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.get("/users", response_model=list[UserOut])
+def list_users(
+    db: Session = Depends(get_db),
+    _user: dict = Depends(require_role("admin")),
+) -> list[User]:
+    return db.query(User).all()
