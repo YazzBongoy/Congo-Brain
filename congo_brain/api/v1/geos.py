@@ -265,3 +265,41 @@ def list_markets() -> list[dict]:
 def list_indicators() -> list[dict]:
     _ensure_loaded()
     return _engine.indicators
+
+
+# ── Predictions ────────────────────────────────────────────────
+
+from congo_brain.services.ia_gov.predictor import (
+    PredictiveModel, SCENARIOS,
+)
+
+_pred_model: PredictiveModel | None = None
+
+
+def _ensure_pred() -> PredictiveModel:
+    global _pred_model
+    if _pred_model is None:
+        _pred_model = PredictiveModel()
+        _ensure_loaded()
+        _pred_model.load_from_snn_engine(_engine)
+    return _pred_model
+
+
+@router.get("/predictions/scenarios")
+def list_scenarios() -> list[dict]:
+    return [s.to_dict() for s in SCENARIOS.values()]
+
+
+@router.get("/predictions/compare")
+def compare_scenarios(years: int = 10) -> dict:
+    m = _ensure_pred()
+    return m.compare_scenarios(years)
+
+
+@router.get("/predictions/{scenario_key}")
+def predict_scenario(scenario_key: str, years: int = 10) -> dict:
+    m = _ensure_pred()
+    if scenario_key not in SCENARIOS:
+        raise HTTPException(status_code=404, detail=f"Scénario inconnu: {scenario_key}")
+    r = m.project(SCENARIOS[scenario_key], years)
+    return r.to_dict()
