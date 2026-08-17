@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "congo-brain.appName" . }}
+  labels:
+    {{- include "congo-brain.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.app.type }}
+  ports:
+    - port: {{ .Values.service.app.port }}
+      targetPort: 8000
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "congo-brain.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "congo-brain.frontendName" . }}
+  labels:
+    {{- include "congo-brain.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.frontend.type }}
+  ports:
+    - port: {{ .Values.service.frontend.port }}
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "congo-brain.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend

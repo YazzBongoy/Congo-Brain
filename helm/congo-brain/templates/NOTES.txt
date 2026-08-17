@@ -1,0 +1,21 @@
+GEOS — Government Economic Optimization System
+================================================
+
+Your GEOS deployment is ready!
+
+{{- if .Values.ingress.enabled }}
+Access GEOS at:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+{{- end }}
+{{- else }}
+Forward the frontend:
+  kubectl port-forward svc/{{ .Release.Name }}-frontend 3000:80
+
+Forward the API:
+  kubectl port-forward svc/{{ .Release.Name }}-app 8000:8000
+{{- end }}
+
+API docs: /docs
+Metrics:  /metrics
+Health:   /health

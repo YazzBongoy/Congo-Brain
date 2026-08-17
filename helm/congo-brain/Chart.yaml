@@ -1,0 +1,17 @@
+apiVersion: v2
+name: congo-brain
+description: GEOS — Government Economic Optimization System for DRC
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - geos
+  - congo-brain
+  - governance
+  - optimization
+  - snn
+home: https://github.com/YazzBongoy/Congo-Brain
+maintainers:
+  - name: YazzBongoy
+sources:
+  - https://github.com/YazzBongoy/Congo-Brain

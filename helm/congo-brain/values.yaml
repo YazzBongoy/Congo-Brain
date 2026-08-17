@@ -1,0 +1,99 @@
+# GEOS Helm Chart — Default Values
+
+replicaCount:
+  app: 2
+  frontend: 2
+
+image:
+  app:
+    repository: ghcr.io/yazzbongoy/congo-brain
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  frontend:
+    repository: ghcr.io/yazzbongoy/congo-brain-frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+service:
+  app:
+    type: ClusterIP
+    port: 8000
+  frontend:
+    type: ClusterIP
+    port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+  hosts:
+    - host: geos.local
+      paths:
+        - path: /api
+          pathType: Prefix
+          backend:
+            service:
+              name: congo-brain-app
+              port:
+                number: 8000
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: congo-brain-frontend
+              port:
+                number: 80
+  tls: []
+
+env:
+  DATABASE_URL: "postgresql+psycopg2://congo:congo_secret@postgres:5432/congo_brain"
+  SECRET_KEY: "change-me-in-production"
+  KEYCLOAK_ENABLED: "false"
+  ENVIRONMENT: "production"
+
+resources:
+  app:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+  frontend:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 75
+  targetMemoryUtilizationPercentage: 80
+
+postgresql:
+  enabled: true
+  auth:
+    username: congo
+    password: congo_secret
+    database: congo_brain
+  primary:
+    persistence:
+      size: 10Gi
+
+grafana:
+  enabled: true
+  adminUser: admin
+  adminPassword: congo_grafana
+  persistence:
+    size: 5Gi
+
+prometheus:
+  enabled: true
+  persistence:
+    size: 10Gi
