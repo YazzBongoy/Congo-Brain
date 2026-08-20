@@ -17,16 +17,17 @@ from dataclasses import dataclass
 @dataclass
 class Mine:
     """Mine avec suivi complet de la chaîne de valeur."""
+
     name: str
     province: str
     mineral: str
-    reserves_tons: float = 0.0       # Réserves estimées
+    reserves_tons: float = 0.0  # Réserves estimées
     annual_production_tons: float = 0.0  # Production annuelle
-    market_value_per_ton: float = 0.0 # Valeur marché (USD/tonne)
-    local_processing_pct: float = 0.0 # % transformation locale
-    tax_rate: float = 0.0            # Taux fiscal effectif (%)
+    market_value_per_ton: float = 0.0  # Valeur marché (USD/tonne)
+    local_processing_pct: float = 0.0  # % transformation locale
+    tax_rate: float = 0.0  # Taux fiscal effectif (%)
     employees: int = 0
-    export_value: float = 0.0        # Valeur exportations (M USD)
+    export_value: float = 0.0  # Valeur exportations (M USD)
     local_processing_value: float = 0.0  # Valeur transformation locale
 
     @property
@@ -81,38 +82,110 @@ class Mine:
 
 # Mines principales de la RDC
 DRC_MINES: list[dict] = [
-    {"name": "Kamoa-Kakula", "province": "Haut-Katanga", "mineral": "Cuivre",
-     "reserves_tons": 43_000_000, "annual_production_tons": 500_000,
-     "market_value_per_ton": 8_500, "local_processing_pct": 10, "tax_rate": 35,
-     "employees": 4500, "export_value": 3_800, "local_processing_value": 400},
-    {"name": "Tenke Fungurume", "province": "Haut-Katanga", "mineral": "Cobalt",
-     "reserves_tons": 3_200_000, "annual_production_tons": 30_000,
-     "market_value_per_ton": 35_000, "local_processing_pct": 5, "tax_rate": 30,
-     "employees": 3500, "export_value": 1_000, "local_processing_value": 50},
-    {"name": "Mutanda Mining", "province": "Haut-Katanga", "mineral": "Cobalt",
-     "reserves_tons": 1_500_000, "annual_production_tons": 15_000,
-     "market_value_per_ton": 35_000, "local_processing_pct": 3, "tax_rate": 30,
-     "employees": 2000, "export_value": 500, "local_processing_value": 15},
-    {"name": "Kibali Gold", "province": "Haut-Uélé", "mineral": "Or",
-     "reserves_tons": 500, "annual_production_tons": 12,
-     "market_value_per_ton": 60_000_000, "local_processing_pct": 8, "tax_rate": 40,
-     "employees": 3000, "export_value": 650, "local_processing_value": 50},
-    {"name": "Banro (Twangiza)", "province": "Sud-Kivu", "mineral": "Or",
-     "reserves_tons": 200, "annual_production_tons": 5,
-     "market_value_per_ton": 60_000_000, "local_processing_pct": 5, "tax_rate": 35,
-     "employees": 1500, "export_value": 280, "local_processing_value": 15},
-    {"name": "Sicomines", "province": "Haut-Katanga", "mineral": "Cuivre",
-     "reserves_tons": 6_000_000, "annual_production_tons": 100_000,
-     "market_value_per_ton": 8_500, "local_processing_pct": 15, "tax_rate": 35,
-     "employees": 2500, "export_value": 800, "local_processing_value": 120},
-    {"name": "AVZ Minerals (Manono)", "province": "Tanganyika", "mineral": "Lithium",
-     "reserves_tons": 10_000_000, "annual_production_tons": 0,
-     "market_value_per_ton": 25_000, "local_processing_pct": 2, "tax_rate": 30,
-     "employees": 0, "export_value": 0, "local_processing_value": 0},
-    {"name": "Somide (Coltan)", "province": "Sud-Kivu", "mineral": "Coltan",
-     "reserves_tons": 50_000, "annual_production_tons": 500,
-     "market_value_per_ton": 100_000, "local_processing_pct": 3, "tax_rate": 25,
-     "employees": 800, "export_value": 45, "local_processing_value": 1.5},
+    {
+        "name": "Kamoa-Kakula",
+        "province": "Haut-Katanga",
+        "mineral": "Cuivre",
+        "reserves_tons": 43_000_000,
+        "annual_production_tons": 500_000,
+        "market_value_per_ton": 8_500,
+        "local_processing_pct": 10,
+        "tax_rate": 35,
+        "employees": 4500,
+        "export_value": 3_800,
+        "local_processing_value": 400,
+    },
+    {
+        "name": "Tenke Fungurume",
+        "province": "Haut-Katanga",
+        "mineral": "Cobalt",
+        "reserves_tons": 3_200_000,
+        "annual_production_tons": 30_000,
+        "market_value_per_ton": 35_000,
+        "local_processing_pct": 5,
+        "tax_rate": 30,
+        "employees": 3500,
+        "export_value": 1_000,
+        "local_processing_value": 50,
+    },
+    {
+        "name": "Mutanda Mining",
+        "province": "Haut-Katanga",
+        "mineral": "Cobalt",
+        "reserves_tons": 1_500_000,
+        "annual_production_tons": 15_000,
+        "market_value_per_ton": 35_000,
+        "local_processing_pct": 3,
+        "tax_rate": 30,
+        "employees": 2000,
+        "export_value": 500,
+        "local_processing_value": 15,
+    },
+    {
+        "name": "Kibali Gold",
+        "province": "Haut-Uélé",
+        "mineral": "Or",
+        "reserves_tons": 500,
+        "annual_production_tons": 12,
+        "market_value_per_ton": 60_000_000,
+        "local_processing_pct": 8,
+        "tax_rate": 40,
+        "employees": 3000,
+        "export_value": 650,
+        "local_processing_value": 50,
+    },
+    {
+        "name": "Banro (Twangiza)",
+        "province": "Sud-Kivu",
+        "mineral": "Or",
+        "reserves_tons": 200,
+        "annual_production_tons": 5,
+        "market_value_per_ton": 60_000_000,
+        "local_processing_pct": 5,
+        "tax_rate": 35,
+        "employees": 1500,
+        "export_value": 280,
+        "local_processing_value": 15,
+    },
+    {
+        "name": "Sicomines",
+        "province": "Haut-Katanga",
+        "mineral": "Cuivre",
+        "reserves_tons": 6_000_000,
+        "annual_production_tons": 100_000,
+        "market_value_per_ton": 8_500,
+        "local_processing_pct": 15,
+        "tax_rate": 35,
+        "employees": 2500,
+        "export_value": 800,
+        "local_processing_value": 120,
+    },
+    {
+        "name": "AVZ Minerals (Manono)",
+        "province": "Tanganyika",
+        "mineral": "Lithium",
+        "reserves_tons": 10_000_000,
+        "annual_production_tons": 0,
+        "market_value_per_ton": 25_000,
+        "local_processing_pct": 2,
+        "tax_rate": 30,
+        "employees": 0,
+        "export_value": 0,
+        "local_processing_value": 0,
+    },
+    {
+        "name": "Somide (Coltan)",
+        "province": "Sud-Kivu",
+        "mineral": "Coltan",
+        "reserves_tons": 50_000,
+        "annual_production_tons": 500,
+        "market_value_per_ton": 100_000,
+        "local_processing_pct": 3,
+        "tax_rate": 25,
+        "employees": 800,
+        "export_value": 45,
+        "local_processing_value": 1.5,
+    },
 ]
 
 
@@ -178,13 +251,15 @@ class NationalResourceEngine:
             processing = s.get("local_processing_pct", m.local_processing_pct)
             original = m.local_processing_pct
             m.local_processing_pct = processing
-            results.append({
-                "scenario": s.get("name", f"Processing {processing}%"),
-                "local_processing_pct": processing,
-                "value_added": round(m.value_added, 2),
-                "capture_rate": m.capture_rate,
-                "nnv": round(m.net_national_value, 2),
-            })
+            results.append(
+                {
+                    "scenario": s.get("name", f"Processing {processing}%"),
+                    "local_processing_pct": processing,
+                    "value_added": round(m.value_added, 2),
+                    "capture_rate": m.capture_rate,
+                    "nnv": round(m.net_national_value, 2),
+                }
+            )
             m.local_processing_pct = original
         return results
 
@@ -198,6 +273,5 @@ class NationalResourceEngine:
             "total_employees": self.total_employees,
             "overall_capture_rate": self.overall_capture_rate,
             "mineral_breakdown": self.get_mineral_breakdown(),
-            "mines": sorted([m.to_dict() for m in self.mines.values()],
-                            key=lambda x: x["gross_value"], reverse=True),
+            "mines": sorted([m.to_dict() for m in self.mines.values()], key=lambda x: x["gross_value"], reverse=True),
         }

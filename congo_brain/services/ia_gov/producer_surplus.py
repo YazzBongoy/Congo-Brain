@@ -15,23 +15,30 @@ from dataclasses import dataclass
 @dataclass
 class Enterprise:
     """Entreprise avec mesures de surplus."""
+
     name: str
     sector: str
     province: str = ""
-    revenue: float = 0.0              # Revenus (M USD)
-    production_cost: float = 0.0      # Coût de production
-    tax_burden: float = 0.0           # Fiscalité (M USD)
-    admin_cost: float = 0.0           # Coût administratif
-    corruption_cost: float = 0.0      # Coût corruption
-    logistics_cost: float = 0.0       # Coût logistique
-    energy_cost: float = 0.0          # Coût énergie
+    revenue: float = 0.0  # Revenus (M USD)
+    production_cost: float = 0.0  # Coût de production
+    tax_burden: float = 0.0  # Fiscalité (M USD)
+    admin_cost: float = 0.0  # Coût administratif
+    corruption_cost: float = 0.0  # Coût corruption
+    logistics_cost: float = 0.0  # Coût logistique
+    energy_cost: float = 0.0  # Coût énergie
     employees: int = 0
     formal: bool = True
 
     @property
     def total_cost(self) -> float:
-        return (self.production_cost + self.tax_burden + self.admin_cost
-                + self.corruption_cost + self.logistics_cost + self.energy_cost)
+        return (
+            self.production_cost
+            + self.tax_burden
+            + self.admin_cost
+            + self.corruption_cost
+            + self.logistics_cost
+            + self.energy_cost
+        )
 
     @property
     def producer_surplus(self) -> float:
@@ -70,30 +77,110 @@ class Enterprise:
 
 # Entreprises types de la RDC
 DRC_ENTERPRISES: list[dict] = [
-    {"name": "Gécamines", "sector": "Industrie minière", "province": "Haut-Katanga",
-     "revenue": 2800, "production_cost": 1200, "tax_burden": 560, "admin_cost": 80,
-     "corruption_cost": 200, "logistics_cost": 150, "energy_cost": 300, "employees": 12000},
-    {"name": "SNEL", "sector": "Énergie", "province": "Kinshasa",
-     "revenue": 800, "production_cost": 600, "tax_burden": 120, "admin_cost": 60,
-     "corruption_cost": 100, "logistics_cost": 40, "energy_cost": 0, "employees": 8000},
-    {"name": "Regideso", "sector": "Eau", "province": "Kinshasa",
-     "revenue": 150, "production_cost": 120, "tax_burden": 20, "admin_cost": 25,
-     "corruption_cost": 30, "logistics_cost": 10, "energy_cost": 20, "employees": 3000},
-    {"name": "Vodacom RDC", "sector": "Télécommunications", "province": "Kinshasa",
-     "revenue": 1200, "production_cost": 500, "tax_burden": 200, "admin_cost": 50,
-     "corruption_cost": 30, "logistics_cost": 80, "energy_cost": 100, "employees": 2500},
-    {"name": "Socir (pétrole)", "sector": "Pétrole", "province": "Kongo Central",
-     "revenue": 3500, "production_cost": 1800, "tax_burden": 700, "admin_cost": 100,
-     "corruption_cost": 250, "logistics_cost": 200, "energy_cost": 150, "employees": 5000},
-    {"name": "BRAKIT (ciment)", "sector": "Industrie", "province": "Kongo Central",
-     "revenue": 200, "production_cost": 130, "tax_burden": 30, "admin_cost": 15,
-     "corruption_cost": 15, "logistics_cost": 20, "energy_cost": 25, "employees": 800},
-    {"name": "PME agricole type", "sector": "Agriculture", "province": "Kasaï",
-     "revenue": 50, "production_cost": 25, "tax_burden": 8, "admin_cost": 5,
-     "corruption_cost": 4, "logistics_cost": 6, "energy_cost": 2, "employees": 15},
-    {"name": "Restaurant formel", "sector": "Services", "province": "Kinshasa",
-     "revenue": 30, "production_cost": 15, "tax_burden": 5, "admin_cost": 3,
-     "corruption_cost": 2, "logistics_cost": 2, "energy_cost": 3, "employees": 8},
+    {
+        "name": "Gécamines",
+        "sector": "Industrie minière",
+        "province": "Haut-Katanga",
+        "revenue": 2800,
+        "production_cost": 1200,
+        "tax_burden": 560,
+        "admin_cost": 80,
+        "corruption_cost": 200,
+        "logistics_cost": 150,
+        "energy_cost": 300,
+        "employees": 12000,
+    },
+    {
+        "name": "SNEL",
+        "sector": "Énergie",
+        "province": "Kinshasa",
+        "revenue": 800,
+        "production_cost": 600,
+        "tax_burden": 120,
+        "admin_cost": 60,
+        "corruption_cost": 100,
+        "logistics_cost": 40,
+        "energy_cost": 0,
+        "employees": 8000,
+    },
+    {
+        "name": "Regideso",
+        "sector": "Eau",
+        "province": "Kinshasa",
+        "revenue": 150,
+        "production_cost": 120,
+        "tax_burden": 20,
+        "admin_cost": 25,
+        "corruption_cost": 30,
+        "logistics_cost": 10,
+        "energy_cost": 20,
+        "employees": 3000,
+    },
+    {
+        "name": "Vodacom RDC",
+        "sector": "Télécommunications",
+        "province": "Kinshasa",
+        "revenue": 1200,
+        "production_cost": 500,
+        "tax_burden": 200,
+        "admin_cost": 50,
+        "corruption_cost": 30,
+        "logistics_cost": 80,
+        "energy_cost": 100,
+        "employees": 2500,
+    },
+    {
+        "name": "Socir (pétrole)",
+        "sector": "Pétrole",
+        "province": "Kongo Central",
+        "revenue": 3500,
+        "production_cost": 1800,
+        "tax_burden": 700,
+        "admin_cost": 100,
+        "corruption_cost": 250,
+        "logistics_cost": 200,
+        "energy_cost": 150,
+        "employees": 5000,
+    },
+    {
+        "name": "BRAKIT (ciment)",
+        "sector": "Industrie",
+        "province": "Kongo Central",
+        "revenue": 200,
+        "production_cost": 130,
+        "tax_burden": 30,
+        "admin_cost": 15,
+        "corruption_cost": 15,
+        "logistics_cost": 20,
+        "energy_cost": 25,
+        "employees": 800,
+    },
+    {
+        "name": "PME agricole type",
+        "sector": "Agriculture",
+        "province": "Kasaï",
+        "revenue": 50,
+        "production_cost": 25,
+        "tax_burden": 8,
+        "admin_cost": 5,
+        "corruption_cost": 4,
+        "logistics_cost": 6,
+        "energy_cost": 2,
+        "employees": 15,
+    },
+    {
+        "name": "Restaurant formel",
+        "sector": "Services",
+        "province": "Kinshasa",
+        "revenue": 30,
+        "production_cost": 15,
+        "tax_burden": 5,
+        "admin_cost": 3,
+        "corruption_cost": 2,
+        "logistics_cost": 2,
+        "energy_cost": 3,
+        "employees": 8,
+    },
 ]
 
 
@@ -137,8 +224,9 @@ class ProducerSurplusEngine:
     def total_corruption_drag(self) -> float:
         return sum(e.corruption_cost for e in self.enterprises.values())
 
-    def simulate_reform(self, reform_name: str, tax_reduction: float = 0,
-                        admin_reduction: float = 0, corruption_reduction: float = 0) -> dict:
+    def simulate_reform(
+        self, reform_name: str, tax_reduction: float = 0, admin_reduction: float = 0, corruption_reduction: float = 0
+    ) -> dict:
         """Simule l'impact d'une réforme sur le PS."""
         original_ps = {name: e.producer_surplus for name, e in self.enterprises.items()}
 
@@ -162,12 +250,15 @@ class ProducerSurplusEngine:
             "original_total_ps": round(sum(original_ps.values()), 2),
             "new_total_ps": round(sum(new_ps.values()), 2),
             "ps_delta": round(delta, 2),
-            "improvement_pct": round(delta / sum(original_ps.values()) * 100, 1) if sum(original_ps.values()) > 0 else 0,
+            "improvement_pct": round(delta / sum(original_ps.values()) * 100, 1)
+            if sum(original_ps.values()) > 0
+            else 0,
         }
 
     def get_ps_ranking(self) -> list[dict]:
-        return sorted([e.to_dict() for e in self.enterprises.values()],
-                      key=lambda x: x["producer_surplus"], reverse=True)
+        return sorted(
+            [e.to_dict() for e in self.enterprises.values()], key=lambda x: x["producer_surplus"], reverse=True
+        )
 
     def get_dashboard(self) -> dict:
         return {

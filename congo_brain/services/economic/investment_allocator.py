@@ -14,7 +14,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 try:
-    from scipy.optimize import milp, Bounds, LinearConstraint
+    from scipy.optimize import Bounds, LinearConstraint, milp
+
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
@@ -23,21 +24,22 @@ except ImportError:
 @dataclass
 class MOEGProject:
     """A public investment project with full MOEG scoring dimensions."""
+
     name: str
-    cost: float                          # millions USD — minimize
+    cost: float  # millions USD — minimize
     # Maximize
-    revenue_impact: float = 0.0          # Recettes fiscales générées (0-1)
-    jobs_created: int = 0                # Nombre d'emplois créés
-    jobs_score: float = 0.0              # Score emploi normalisé (0-1)
-    local_value_added: float = 0.0       # Valeur ajoutée locale (0-1)
+    revenue_impact: float = 0.0  # Recettes fiscales générées (0-1)
+    jobs_created: int = 0  # Nombre d'emplois créés
+    jobs_score: float = 0.0  # Score emploi normalisé (0-1)
+    local_value_added: float = 0.0  # Valeur ajoutée locale (0-1)
     # Minimize
-    corruption_risk: float = 0.0         # Risque de corruption estimé (0-1)
-    env_impact: float = 0.0             # Impact environnemental (0-1)
-    duration_months: int = 0             # Temps de réalisation en mois
+    corruption_risk: float = 0.0  # Risque de corruption estimé (0-1)
+    env_impact: float = 0.0  # Impact environnemental (0-1)
+    duration_months: int = 0  # Temps de réalisation en mois
     # Context
     sector: str = ""
     province: str = ""
-    sustainability: float = 0.5         # Soutenabilité globale (0-1)
+    sustainability: float = 0.5  # Soutenabilité globale (0-1)
 
     @property
     def cost_normalized(self) -> float:
@@ -99,46 +101,146 @@ class MOEGProject:
 
 # DRC public investment project candidates (costs in millions USD)
 DRC_PROJECT_CANDIDATES: list[dict] = [
-    {"name": "Autoroute Kinshasa-Lubumbashi", "cost": 2500, "revenue_impact": 0.7,
-     "jobs_created": 50000, "jobs_score": 0.9, "local_value_added": 0.8,
-     "corruption_risk": 0.6, "env_impact": 0.5, "duration_months": 84,
-     "sector": "Transport", "province": "Nationale", "sustainability": 0.5},
-    {"name": "Barrage d'Inga III", "cost": 5000, "revenue_impact": 0.9,
-     "jobs_created": 30000, "jobs_score": 0.7, "local_value_added": 0.9,
-     "corruption_risk": 0.7, "env_impact": 0.4, "duration_months": 96,
-     "sector": "Énergie", "province": "Kongo Central", "sustainability": 0.6},
-    {"name": "Réseau électrique national", "cost": 3000, "revenue_impact": 0.8,
-     "jobs_created": 40000, "jobs_score": 0.8, "local_value_added": 0.85,
-     "corruption_risk": 0.5, "env_impact": 0.3, "duration_months": 60,
-     "sector": "Énergie", "province": "Nationale", "sustainability": 0.7},
-    {"name": "Hôpitaux provinciaux (10)", "cost": 800, "revenue_impact": 0.3,
-     "jobs_created": 15000, "jobs_score": 0.6, "local_value_added": 0.5,
-     "corruption_risk": 0.3, "env_impact": 0.1, "duration_months": 36,
-     "sector": "Santé", "province": "Nationale", "sustainability": 0.8},
-    {"name": "Universités techniques (5)", "cost": 600, "revenue_impact": 0.4,
-     "jobs_created": 10000, "jobs_score": 0.5, "local_value_added": 0.7,
-     "corruption_risk": 0.2, "env_impact": 0.1, "duration_months": 30,
-     "sector": "Éducation", "province": "Nationale", "sustainability": 0.9},
-    {"name": "Port minéral de Matadi", "cost": 1200, "revenue_impact": 0.6,
-     "jobs_created": 20000, "jobs_score": 0.7, "local_value_added": 0.6,
-     "corruption_risk": 0.5, "env_impact": 0.6, "duration_months": 48,
-     "sector": "Transport", "province": "Kongo Central", "sustainability": 0.4},
-    {"name": "Usine de transformation cobalt", "cost": 1500, "revenue_impact": 0.5,
-     "jobs_created": 25000, "jobs_score": 0.85, "local_value_added": 0.95,
-     "corruption_risk": 0.4, "env_impact": 0.7, "duration_months": 36,
-     "sector": "Industrie", "province": "Haut-Katanga", "sustainability": 0.3},
-    {"name": "Réseau eau potable (Kinshasa)", "cost": 400, "revenue_impact": 0.2,
-     "jobs_created": 8000, "jobs_score": 0.4, "local_value_added": 0.4,
-     "corruption_risk": 0.4, "env_impact": 0.1, "duration_months": 24,
-     "sector": "Eau", "province": "Kinshasa", "sustainability": 0.8},
-    {"name": "Fibre optique nationale", "cost": 700, "revenue_impact": 0.6,
-     "jobs_created": 15000, "jobs_score": 0.6, "local_value_added": 0.8,
-     "corruption_risk": 0.3, "env_impact": 0.1, "duration_months": 30,
-     "sector": "Numérique", "province": "Nationale", "sustainability": 0.7},
-    {"name": "Parc solaire Nord-Kivu", "cost": 350, "revenue_impact": 0.4,
-     "jobs_created": 5000, "jobs_score": 0.5, "local_value_added": 0.5,
-     "corruption_risk": 0.3, "env_impact": 0.05, "duration_months": 18,
-     "sector": "Énergie", "province": "Nord-Kivu", "sustainability": 0.95},
+    {
+        "name": "Autoroute Kinshasa-Lubumbashi",
+        "cost": 2500,
+        "revenue_impact": 0.7,
+        "jobs_created": 50000,
+        "jobs_score": 0.9,
+        "local_value_added": 0.8,
+        "corruption_risk": 0.6,
+        "env_impact": 0.5,
+        "duration_months": 84,
+        "sector": "Transport",
+        "province": "Nationale",
+        "sustainability": 0.5,
+    },
+    {
+        "name": "Barrage d'Inga III",
+        "cost": 5000,
+        "revenue_impact": 0.9,
+        "jobs_created": 30000,
+        "jobs_score": 0.7,
+        "local_value_added": 0.9,
+        "corruption_risk": 0.7,
+        "env_impact": 0.4,
+        "duration_months": 96,
+        "sector": "Énergie",
+        "province": "Kongo Central",
+        "sustainability": 0.6,
+    },
+    {
+        "name": "Réseau électrique national",
+        "cost": 3000,
+        "revenue_impact": 0.8,
+        "jobs_created": 40000,
+        "jobs_score": 0.8,
+        "local_value_added": 0.85,
+        "corruption_risk": 0.5,
+        "env_impact": 0.3,
+        "duration_months": 60,
+        "sector": "Énergie",
+        "province": "Nationale",
+        "sustainability": 0.7,
+    },
+    {
+        "name": "Hôpitaux provinciaux (10)",
+        "cost": 800,
+        "revenue_impact": 0.3,
+        "jobs_created": 15000,
+        "jobs_score": 0.6,
+        "local_value_added": 0.5,
+        "corruption_risk": 0.3,
+        "env_impact": 0.1,
+        "duration_months": 36,
+        "sector": "Santé",
+        "province": "Nationale",
+        "sustainability": 0.8,
+    },
+    {
+        "name": "Universités techniques (5)",
+        "cost": 600,
+        "revenue_impact": 0.4,
+        "jobs_created": 10000,
+        "jobs_score": 0.5,
+        "local_value_added": 0.7,
+        "corruption_risk": 0.2,
+        "env_impact": 0.1,
+        "duration_months": 30,
+        "sector": "Éducation",
+        "province": "Nationale",
+        "sustainability": 0.9,
+    },
+    {
+        "name": "Port minéral de Matadi",
+        "cost": 1200,
+        "revenue_impact": 0.6,
+        "jobs_created": 20000,
+        "jobs_score": 0.7,
+        "local_value_added": 0.6,
+        "corruption_risk": 0.5,
+        "env_impact": 0.6,
+        "duration_months": 48,
+        "sector": "Transport",
+        "province": "Kongo Central",
+        "sustainability": 0.4,
+    },
+    {
+        "name": "Usine de transformation cobalt",
+        "cost": 1500,
+        "revenue_impact": 0.5,
+        "jobs_created": 25000,
+        "jobs_score": 0.85,
+        "local_value_added": 0.95,
+        "corruption_risk": 0.4,
+        "env_impact": 0.7,
+        "duration_months": 36,
+        "sector": "Industrie",
+        "province": "Haut-Katanga",
+        "sustainability": 0.3,
+    },
+    {
+        "name": "Réseau eau potable (Kinshasa)",
+        "cost": 400,
+        "revenue_impact": 0.2,
+        "jobs_created": 8000,
+        "jobs_score": 0.4,
+        "local_value_added": 0.4,
+        "corruption_risk": 0.4,
+        "env_impact": 0.1,
+        "duration_months": 24,
+        "sector": "Eau",
+        "province": "Kinshasa",
+        "sustainability": 0.8,
+    },
+    {
+        "name": "Fibre optique nationale",
+        "cost": 700,
+        "revenue_impact": 0.6,
+        "jobs_created": 15000,
+        "jobs_score": 0.6,
+        "local_value_added": 0.8,
+        "corruption_risk": 0.3,
+        "env_impact": 0.1,
+        "duration_months": 30,
+        "sector": "Numérique",
+        "province": "Nationale",
+        "sustainability": 0.7,
+    },
+    {
+        "name": "Parc solaire Nord-Kivu",
+        "cost": 350,
+        "revenue_impact": 0.4,
+        "jobs_created": 5000,
+        "jobs_score": 0.5,
+        "local_value_added": 0.5,
+        "corruption_risk": 0.3,
+        "env_impact": 0.05,
+        "duration_months": 18,
+        "sector": "Énergie",
+        "province": "Nord-Kivu",
+        "sustainability": 0.95,
+    },
 ]
 
 
@@ -199,7 +301,6 @@ class InvestmentAllocator:
         if not HAS_SCIPY or not self.projects:
             return self._greedy_optimize(weights)
 
-        n = len(self.projects)
         scores = [p.nsb_score(**(weights or {})) for p in self.projects]
         costs = [p.cost for p in self.projects]
 
@@ -247,11 +348,13 @@ class InvestmentAllocator:
         scored = []
         for p in self.projects:
             s = p.nsb_score(**(weights or {}))
-            scored.append({
-                **p.to_dict(),
-                "nsb_score": round(s, 4),
-                "cost_effectiveness": round(s / p.cost * 1_000_000, 2) if p.cost > 0 else 0,
-            })
+            scored.append(
+                {
+                    **p.to_dict(),
+                    "nsb_score": round(s, 4),
+                    "cost_effectiveness": round(s / p.cost * 1_000_000, 2) if p.cost > 0 else 0,
+                }
+            )
         scored.sort(key=lambda x: x["nsb_score"], reverse=True)
         return scored
 

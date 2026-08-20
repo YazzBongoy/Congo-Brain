@@ -1,9 +1,7 @@
 """Tests for GEOS Prometheus monitoring."""
 
-import pytest
-
 from congo_brain.core.monitoring import (
-    PrometheusMiddleware, _normalize_path, REQUEST_COUNT, REQUEST_LATENCY, ERROR_COUNT,
+    _normalize_path,
 )
 
 

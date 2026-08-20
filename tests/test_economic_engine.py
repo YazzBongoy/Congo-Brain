@@ -3,12 +3,11 @@
 SNN = CS + PS + GR + NRV - DWL - EC
 """
 
-import pytest
-from congo_brain.services.economic.welfare_model import WelfareModel, EconomyConstraints
-from congo_brain.services.economic.resource_optimizer import ResourceOptimizer, ResourceValueChain
+from congo_brain.services.economic.corruption_calculator import CorruptionCalculator, EnvironmentalCost
 from congo_brain.services.economic.investment_allocator import InvestmentAllocator, MOEGProject
 from congo_brain.services.economic.nwi import NationalWelfareIndex, NWIComponents
-from congo_brain.services.economic.corruption_calculator import CorruptionCalculator, DWLComponents, EnvironmentalCost
+from congo_brain.services.economic.resource_optimizer import ResourceOptimizer, ResourceValueChain
+from congo_brain.services.economic.welfare_model import EconomyConstraints, WelfareModel
 
 
 class TestWelfareModel:
@@ -56,18 +55,26 @@ class TestWelfareModel:
 
     def test_constraints_met(self):
         wm = WelfareModel()
-        wm.set_constraints(EconomyConstraints(
-            budget_ceiling=10.0, revenue=12.0,
-            current_debt_to_gdp=40.0, current_inflation=3.0,
-        ))
+        wm.set_constraints(
+            EconomyConstraints(
+                budget_ceiling=10.0,
+                revenue=12.0,
+                current_debt_to_gdp=40.0,
+                current_inflation=3.0,
+            )
+        )
         assert wm.constraints.all_constraints_met
 
     def test_constraints_breach(self):
         wm = WelfareModel()
-        wm.set_constraints(EconomyConstraints(
-            budget_ceiling=15.0, revenue=12.0,
-            current_debt_to_gdp=40.0, current_inflation=3.0,
-        ))
+        wm.set_constraints(
+            EconomyConstraints(
+                budget_ceiling=15.0,
+                revenue=12.0,
+                current_debt_to_gdp=40.0,
+                current_inflation=3.0,
+            )
+        )
         assert not wm.constraints.budget_balanced
 
     def test_sector_breakdown_sorted_by_snn(self):
@@ -114,10 +121,14 @@ class TestResourceOptimizer:
 
     def test_custom_resource(self):
         ro = ResourceOptimizer()
-        ro.add_resource(ResourceValueChain(
-            resource="Diamant", extraction_value=1.0,
-            transformation_value=0.8, export_value=0.5,
-        ))
+        ro.add_resource(
+            ResourceValueChain(
+                resource="Diamant",
+                extraction_value=1.0,
+                transformation_value=0.8,
+                export_value=0.5,
+            )
+        )
         assert ro.resources["Diamant"].capture_rate > 50
 
     def test_dashboard_has_nrv(self):
@@ -137,24 +148,45 @@ class TestInvestmentAllocator:
 
     def test_single_project_fit(self):
         ia = InvestmentAllocator()
-        ia.add_project(MOEGProject(
-            name="P1", cost=100, revenue_impact=0.8, jobs_score=0.9,
-            local_value_added=0.7,
-        ))
+        ia.add_project(
+            MOEGProject(
+                name="P1",
+                cost=100,
+                revenue_impact=0.8,
+                jobs_score=0.9,
+                local_value_added=0.7,
+            )
+        )
         ia.set_budget(200)
         result = ia.optimize()
         assert "P1" in result["allocation"]
 
     def test_budget_constraint(self):
         ia = InvestmentAllocator()
-        ia.add_project(MOEGProject(
-            name="P1", cost=500, revenue_impact=0.9, jobs_score=0.8,
-            local_value_added=0.9, corruption_risk=0.2, env_impact=0.1, duration_months=12,
-        ))
-        ia.add_project(MOEGProject(
-            name="P2", cost=600, revenue_impact=0.8, jobs_score=0.7,
-            local_value_added=0.8, corruption_risk=0.3, env_impact=0.2, duration_months=18,
-        ))
+        ia.add_project(
+            MOEGProject(
+                name="P1",
+                cost=500,
+                revenue_impact=0.9,
+                jobs_score=0.8,
+                local_value_added=0.9,
+                corruption_risk=0.2,
+                env_impact=0.1,
+                duration_months=12,
+            )
+        )
+        ia.add_project(
+            MOEGProject(
+                name="P2",
+                cost=600,
+                revenue_impact=0.8,
+                jobs_score=0.7,
+                local_value_added=0.8,
+                corruption_risk=0.3,
+                env_impact=0.2,
+                duration_months=18,
+            )
+        )
         ia.set_budget(800)
         result = ia.optimize()
         assert result["total_cost"] <= 800
@@ -175,18 +207,30 @@ class TestInvestmentAllocator:
         assert p1.nsb_score() > p2.nsb_score()
 
     def test_nsb_scoring_minimize_corruption(self):
-        p1 = MOEGProject(name="Clean", cost=100, corruption_risk=0.1, revenue_impact=0.5, jobs_score=0.5, local_value_added=0.5)
-        p2 = MOEGProject(name="Dirty", cost=100, corruption_risk=0.9, revenue_impact=0.5, jobs_score=0.5, local_value_added=0.5)
+        p1 = MOEGProject(
+            name="Clean", cost=100, corruption_risk=0.1, revenue_impact=0.5, jobs_score=0.5, local_value_added=0.5
+        )
+        p2 = MOEGProject(
+            name="Dirty", cost=100, corruption_risk=0.9, revenue_impact=0.5, jobs_score=0.5, local_value_added=0.5
+        )
         assert p1.nsb_score() > p2.nsb_score()
 
     def test_nsb_scoring_minimize_env_impact(self):
-        p1 = MOEGProject(name="Green", cost=100, env_impact=0.1, revenue_impact=0.5, jobs_score=0.5, local_value_added=0.5)
-        p2 = MOEGProject(name="Polluted", cost=100, env_impact=0.9, revenue_impact=0.5, jobs_score=0.5, local_value_added=0.5)
+        p1 = MOEGProject(
+            name="Green", cost=100, env_impact=0.1, revenue_impact=0.5, jobs_score=0.5, local_value_added=0.5
+        )
+        p2 = MOEGProject(
+            name="Polluted", cost=100, env_impact=0.9, revenue_impact=0.5, jobs_score=0.5, local_value_added=0.5
+        )
         assert p1.nsb_score() > p2.nsb_score()
 
     def test_nsb_scoring_minimize_duration(self):
-        p1 = MOEGProject(name="Fast", cost=100, duration_months=6, revenue_impact=0.5, jobs_score=0.5, local_value_added=0.5)
-        p2 = MOEGProject(name="Slow", cost=100, duration_months=120, revenue_impact=0.5, jobs_score=0.5, local_value_added=0.5)
+        p1 = MOEGProject(
+            name="Fast", cost=100, duration_months=6, revenue_impact=0.5, jobs_score=0.5, local_value_added=0.5
+        )
+        p2 = MOEGProject(
+            name="Slow", cost=100, duration_months=120, revenue_impact=0.5, jobs_score=0.5, local_value_added=0.5
+        )
         assert p1.nsb_score() > p2.nsb_score()
 
     def test_load_baseline(self):

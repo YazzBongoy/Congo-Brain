@@ -4,11 +4,23 @@
 Formula: max SNN = CS + PS + GR + NRV - DWL - EC
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
+from sqlalchemy.orm import Session
 
+from congo_brain.core.database import get_db
+from congo_brain.core.rbac import Permission
+from congo_brain.core.security import require_permission
+from congo_brain.services.audit_service import record_audit_event
+from congo_brain.services.ia_gov.predictor import SCENARIOS, PredictiveModel
+from congo_brain.services.ia_gov.reports import generate_snn_excel, generate_snn_pdf
 from congo_brain.services.ia_gov.snn_engine import SNNOptimizationEngine
 
-router = APIRouter(prefix="/geos", tags=["GEOS"])
+router = APIRouter(
+    prefix="/geos",
+    tags=["GEOS"],
+    dependencies=[Depends(require_permission(Permission.NATIONAL_ANALYTICS_READ))],
+)
 
 _engine = SNNOptimizationEngine()
 
@@ -20,11 +32,17 @@ def _ensure_loaded() -> None:
 
 # ── SNN Core ───────────────────────────────────────────────────
 
+
 @router.get("/dashboard")
-def dashboard() -> dict:
+def dashboard(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
+) -> dict:
     """Vue complète du GEOS avec SNN agrégé."""
     _ensure_loaded()
-    return _engine.get_dashboard()
+    result = _engine.get_dashboard()
+    record_audit_event(db, current_user, "geos_dashboard.computed", "geos_dashboard", "national")
+    return result
 
 
 @router.get("/snn")
@@ -35,14 +53,28 @@ def compute_snn() -> dict:
 
 
 @router.post("/optimize")
-def optimize(body: dict | None = None) -> dict:
+def optimize(
+    body: dict | None = None,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
+) -> dict:
     """Optimise l'allocation budgétaire pour max SNN."""
     _ensure_loaded()
     budget = (body or {}).get("budget", 10_000)
-    return _engine.optimize_allocation(budget)
+    result = _engine.optimize_allocation(budget)
+    record_audit_event(
+        db,
+        current_user,
+        "optimization.executed",
+        "geos_optimization",
+        "allocation",
+        detail={"budget": budget},
+    )
+    return result
 
 
 # ── Provinces ──────────────────────────────────────────────────
+
 
 @router.get("/provinces")
 def list_provinces() -> list[dict]:
@@ -60,6 +92,7 @@ def get_province(name: str) -> dict:
 
 
 # ── Companies ──────────────────────────────────────────────────
+
 
 @router.get("/companies")
 def list_companies() -> list[dict]:
@@ -83,9 +116,14 @@ def companies_ps_total() -> dict:
     total = 0.0
     details = {}
     for c in _engine.companies:
-        tc = (c.get("production_cost", 0) + c.get("tax_burden", 0)
-              + c.get("admin_cost", 0) + c.get("corruption_cost", 0)
-              + c.get("logistics_cost", 0) + c.get("energy_cost", 0))
+        tc = (
+            c.get("production_cost", 0)
+            + c.get("tax_burden", 0)
+            + c.get("admin_cost", 0)
+            + c.get("corruption_cost", 0)
+            + c.get("logistics_cost", 0)
+            + c.get("energy_cost", 0)
+        )
         ps = max(0, c.get("revenue", 0) - tc)
         total += ps
         details[c["name"]] = round(ps, 2)
@@ -93,6 +131,7 @@ def companies_ps_total() -> dict:
 
 
 # ── Ministries ─────────────────────────────────────────────────
+
 
 @router.get("/ministries")
 def list_ministries() -> list[dict]:
@@ -106,10 +145,12 @@ def ministries_ranking() -> list[dict]:
     _ensure_loaded()
     ranking = []
     for m in _engine.ministries:
-        gs = (0.40 * m.get("optimization_score", 0)
-              + 0.20 * m.get("transparency_score", 0)
-              + 0.20 * m.get("performance_score", 0)
-              + 0.20 * m.get("satisfaction_score", 0))
+        gs = (
+            0.40 * m.get("optimization_score", 0)
+            + 0.20 * m.get("transparency_score", 0)
+            + 0.20 * m.get("performance_score", 0)
+            + 0.20 * m.get("satisfaction_score", 0)
+        )
         ranking.append({"name": m["name"], "governance_score": round(gs, 1)})
     ranking.sort(key=lambda x: x["governance_score"], reverse=True)
     return ranking
@@ -120,17 +161,19 @@ def get_ministry(name: str) -> dict:
     _ensure_loaded()
     for m in _engine.ministries:
         if m.get("name", "").lower() == name.lower():
-            gs = (0.40 * m.get("optimization_score", 0)
-                  + 0.20 * m.get("transparency_score", 0)
-                  + 0.20 * m.get("performance_score", 0)
-                  + 0.20 * m.get("satisfaction_score", 0))
+            gs = (
+                0.40 * m.get("optimization_score", 0)
+                + 0.20 * m.get("transparency_score", 0)
+                + 0.20 * m.get("performance_score", 0)
+                + 0.20 * m.get("satisfaction_score", 0)
+            )
             exec_rate = round(m.get("budget_executed", 0) / m.get("budget_allocated", 1) * 100, 1)
             return {**m, "governance_score": round(gs, 1), "execution_rate": exec_rate}
     raise HTTPException(status_code=404, detail=f"Ministry '{name}' not found")
-    return ranking
 
 
 # ── Resources ──────────────────────────────────────────────────
+
 
 @router.get("/resources")
 def list_resources() -> list[dict]:
@@ -174,6 +217,7 @@ def resources_ec_total() -> dict:
 
 # ── Taxes ──────────────────────────────────────────────────────
 
+
 @router.get("/taxes")
 def list_taxes() -> list[dict]:
     _ensure_loaded()
@@ -186,11 +230,14 @@ def taxes_revenue_total() -> dict:
     _ensure_loaded()
     total = sum(t.get("revenue", 0) for t in _engine.taxes)
     evasion = sum(t.get("evasion_estimate", 0) for t in _engine.taxes)
-    details = {t["name"]: {"revenue": t.get("revenue", 0), "evasion": t.get("evasion_estimate", 0)} for t in _engine.taxes}
+    details = {
+        t["name"]: {"revenue": t.get("revenue", 0), "evasion": t.get("evasion_estimate", 0)} for t in _engine.taxes
+    }
     return {"total_revenue": round(total, 2), "total_evasion": round(evasion, 2), "details": details}
 
 
 # ── Projects ───────────────────────────────────────────────────
+
 
 @router.get("/projects")
 def list_projects() -> list[dict]:
@@ -205,15 +252,21 @@ def projects_snn_total() -> dict:
     total = 0.0
     details = {}
     for p in _engine.projects:
-        snn = (p.get("cs_impact", 0) + p.get("ps_impact", 0)
-               + p.get("gr_impact", 0) + p.get("nrv_impact", 0)
-               - p.get("dwl_impact", 0) - p.get("ec_impact", 0))
+        snn = (
+            p.get("cs_impact", 0)
+            + p.get("ps_impact", 0)
+            + p.get("gr_impact", 0)
+            + p.get("nrv_impact", 0)
+            - p.get("dwl_impact", 0)
+            - p.get("ec_impact", 0)
+        )
         total += snn
         details[p["name"]] = round(snn, 2)
     return {"total_snn": round(total, 2), "details": details}
 
 
 # ── Public Services ────────────────────────────────────────────
+
 
 @router.get("/public-services")
 def list_public_services() -> list[dict]:
@@ -237,6 +290,7 @@ def public_services_cs_total() -> dict:
 
 # ── Contracts ──────────────────────────────────────────────────
 
+
 @router.get("/contracts")
 def list_contracts() -> list[dict]:
     _ensure_loaded()
@@ -244,6 +298,7 @@ def list_contracts() -> list[dict]:
 
 
 # ── Payments ───────────────────────────────────────────────────
+
 
 @router.get("/payments")
 def list_payments() -> list[dict]:
@@ -253,6 +308,7 @@ def list_payments() -> list[dict]:
 
 # ── Markets ────────────────────────────────────────────────────
 
+
 @router.get("/markets")
 def list_markets() -> list[dict]:
     _ensure_loaded()
@@ -261,6 +317,7 @@ def list_markets() -> list[dict]:
 
 # ── Indicators ─────────────────────────────────────────────────
 
+
 @router.get("/indicators")
 def list_indicators() -> list[dict]:
     _ensure_loaded()
@@ -268,10 +325,6 @@ def list_indicators() -> list[dict]:
 
 
 # ── Predictions ────────────────────────────────────────────────
-
-from congo_brain.services.ia_gov.predictor import (
-    PredictiveModel, SCENARIOS,
-)
 
 _pred_model: PredictiveModel | None = None
 
@@ -291,29 +344,55 @@ def list_scenarios() -> list[dict]:
 
 
 @router.get("/predictions/compare")
-def compare_scenarios(years: int = 10) -> dict:
+def compare_scenarios(
+    years: int = 10,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
+) -> dict:
     m = _ensure_pred()
-    return m.compare_scenarios(years)
+    result = m.compare_scenarios(years)
+    record_audit_event(
+        db,
+        current_user,
+        "geos_scenarios.compared",
+        "geos_prediction",
+        "comparison",
+        detail={"years": years},
+    )
+    return result
 
 
 @router.get("/predictions/{scenario_key}")
-def predict_scenario(scenario_key: str, years: int = 10) -> dict:
+def predict_scenario(
+    scenario_key: str,
+    years: int = 10,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
+) -> dict:
     m = _ensure_pred()
     if scenario_key not in SCENARIOS:
         raise HTTPException(status_code=404, detail=f"Scénario inconnu: {scenario_key}")
-    r = m.project(SCENARIOS[scenario_key], years)
-    return r.to_dict()
+    result = m.project(SCENARIOS[scenario_key], years).to_dict()
+    record_audit_event(
+        db,
+        current_user,
+        "geos_prediction.executed",
+        "geos_prediction",
+        scenario_key,
+        detail={"years": years},
+    )
+    return result
 
 
 # ── Reports ────────────────────────────────────────────────────
 
-from fastapi.responses import Response
-
-from congo_brain.services.ia_gov.reports import generate_snn_pdf, generate_snn_excel
-
-
 @router.get("/reports/snn.pdf")
-def download_snn_pdf(scenario: str = "baseline", years: int = 10) -> Response:
+def download_snn_pdf(
+    scenario: str = "baseline",
+    years: int = 10,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
+) -> Response:
     """Télécharger le rapport SNN en PDF."""
     _ensure_loaded()
     predictions = None
@@ -321,6 +400,14 @@ def download_snn_pdf(scenario: str = "baseline", years: int = 10) -> Response:
         m = _ensure_pred()
         predictions = m.project(SCENARIOS[scenario], years).to_dict()
     pdf_bytes = generate_snn_pdf(_engine, predictions)
+    record_audit_event(
+        db,
+        current_user,
+        "geos_report.exported",
+        "geos_report",
+        "pdf",
+        detail={"scenario": scenario, "years": years},
+    )
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -329,7 +416,12 @@ def download_snn_pdf(scenario: str = "baseline", years: int = 10) -> Response:
 
 
 @router.get("/reports/snn.xlsx")
-def download_snn_excel(scenario: str = "baseline", years: int = 10) -> Response:
+def download_snn_excel(
+    scenario: str = "baseline",
+    years: int = 10,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
+) -> Response:
     """Télécharger le rapport SNN en Excel."""
     _ensure_loaded()
     predictions = None
@@ -337,6 +429,14 @@ def download_snn_excel(scenario: str = "baseline", years: int = 10) -> Response:
         m = _ensure_pred()
         predictions = m.project(SCENARIOS[scenario], years).to_dict()
     xlsx_bytes = generate_snn_excel(_engine, predictions)
+    record_audit_event(
+        db,
+        current_user,
+        "geos_report.exported",
+        "geos_report",
+        "xlsx",
+        detail={"scenario": scenario, "years": years},
+    )
     return Response(
         content=xlsx_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

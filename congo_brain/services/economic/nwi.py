@@ -14,13 +14,14 @@ from dataclasses import dataclass
 @dataclass
 class NWIComponents:
     """Raw components for NWI calculation aligned with SNN."""
+
     consumer_surplus: float = 0.0
     producer_surplus: float = 0.0
     government_revenue: float = 0.0
     natural_resource_value: float = 0.0
     sustainability: float = 0.0
-    dwl_rate: float = 0.0          # DWL as % of positive value (penalty)
-    ec_rate: float = 0.0           # EC as % of positive value (penalty)
+    dwl_rate: float = 0.0  # DWL as % of positive value (penalty)
+    ec_rate: float = 0.0  # EC as % of positive value (penalty)
     # Reference values for normalization
     max_cs: float = 1.0
     max_ps: float = 1.0

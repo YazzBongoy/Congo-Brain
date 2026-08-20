@@ -13,8 +13,10 @@ class SecurityService:
         self.db = db
 
     def list_alerts(
-        self, province: str | None = None,
-        severity: str | None = None, active_only: bool = False,
+        self,
+        province: str | None = None,
+        severity: str | None = None,
+        active_only: bool = False,
     ) -> list[SecurityAlert]:
         q = self.db.query(SecurityAlert)
         if province:

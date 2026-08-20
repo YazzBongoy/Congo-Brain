@@ -2,8 +2,24 @@
 
 import pytest
 
+from congo_brain.api.graphql import build_schema
+
+
+def test_graphql_requires_authentication(client):
+    response = client.post("/graphql", json={"query": "{ __typename }"})
+    assert response.status_code == 401
+
+
+def test_production_schema_disables_introspection():
+    result = build_schema("production").execute_sync("{ __schema { queryType { name } } }")
+    assert result.errors
+
 
 class TestGraphQL:
+    @pytest.fixture(autouse=True)
+    def _authenticate(self, client, auth_headers):
+        client.headers.update(auth_headers)
+
     def test_graphql_endpoint_exists(self, client):
         r = client.post("/graphql", json={"query": "{ __typename }"})
         assert r.status_code == 200
@@ -72,18 +88,16 @@ class TestGraphQL:
         assert len(scs) >= 5
 
     def test_predict_query(self, client):
-        r = client.post("/graphql", json={
-            "query": '{ predict(scenario: "baseline", years: 5) { scenario finalSnn snnChangePct } }'
-        })
+        r = client.post(
+            "/graphql", json={"query": '{ predict(scenario: "baseline", years: 5) { scenario finalSnn snnChangePct } }'}
+        )
         assert r.status_code == 200
         p = r.json()["data"]["predict"]
         assert p["scenario"] == "Baseline (statu quo)"
         assert p["finalSnn"] != 0
 
     def test_predict_unknown_fallback(self, client):
-        r = client.post("/graphql", json={
-            "query": '{ predict(scenario: "inconnu", years: 3) { scenario } }'
-        })
+        r = client.post("/graphql", json={"query": '{ predict(scenario: "inconnu", years: 3) { scenario } }'})
         assert r.status_code == 200
         assert r.json()["data"]["predict"]["scenario"] == "Baseline (statu quo)"
 

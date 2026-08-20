@@ -1,15 +1,15 @@
 """initial schema
 
 Revision ID: 50fe141dcef6
-Revises: 
+Revises:
 Create Date: 2026-08-17 17:25:25.567295
 
 """
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = '50fe141dcef6'

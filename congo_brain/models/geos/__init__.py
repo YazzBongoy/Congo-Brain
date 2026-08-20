@@ -5,13 +5,35 @@
 """
 
 from congo_brain.models.geos.entities import (
-    Citizen, Company, Project, Budget, Ministry, Resource,
-    Tax, Province, Infrastructure, PublicService, Contract,
-    Payment, Market, Indicator,
+    Budget,
+    Citizen,
+    Company,
+    Contract,
+    Indicator,
+    Infrastructure,
+    Market,
+    Ministry,
+    Payment,
+    Project,
+    Province,
+    PublicService,
+    Resource,
+    Tax,
 )
 
 __all__ = [
-    "Citizen", "Company", "Project", "Budget", "Ministry", "Resource",
-    "Tax", "Province", "Infrastructure", "PublicService", "Contract",
-    "Payment", "Market", "Indicator",
+    "Citizen",
+    "Company",
+    "Project",
+    "Budget",
+    "Ministry",
+    "Resource",
+    "Tax",
+    "Province",
+    "Infrastructure",
+    "PublicService",
+    "Contract",
+    "Payment",
+    "Market",
+    "Indicator",
 ]

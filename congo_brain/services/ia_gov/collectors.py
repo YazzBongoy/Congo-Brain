@@ -10,25 +10,25 @@ Collecte et structure les données de:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime
+from dataclasses import dataclass
 
 
 @dataclass
 class BudgetData:
     """Données budgétaires nationales."""
+
     year: int
-    total_revenue: float = 0.0          # Recettes totales (M USD)
-    tax_revenue: float = 0.0            # Recettes fiscales
-    customs_revenue: float = 0.0        # Recettes douanières
-    mining_revenue: float = 0.0         # Recettes minières
-    other_revenue: float = 0.0          # Autres recettes
-    total_expenditure: float = 0.0      # Dépenses totales
-    current_expenditure: float = 0.0    # Dépenses courantes
-    capital_expenditure: float = 0.0    # Dépenses d'investissement
-    execution_rate: float = 0.0         # Taux d'exécution (%)
-    deficit: float = 0.0               # Déficit budgétaire
-    debt_stock: float = 0.0            # Stock de dette
+    total_revenue: float = 0.0  # Recettes totales (M USD)
+    tax_revenue: float = 0.0  # Recettes fiscales
+    customs_revenue: float = 0.0  # Recettes douanières
+    mining_revenue: float = 0.0  # Recettes minières
+    other_revenue: float = 0.0  # Autres recettes
+    total_expenditure: float = 0.0  # Dépenses totales
+    current_expenditure: float = 0.0  # Dépenses courantes
+    capital_expenditure: float = 0.0  # Dépenses d'investissement
+    execution_rate: float = 0.0  # Taux d'exécution (%)
+    deficit: float = 0.0  # Déficit budgétaire
+    debt_stock: float = 0.0  # Stock de dette
 
     @property
     def budget_balance(self) -> float:
@@ -59,16 +59,17 @@ class BudgetData:
 @dataclass
 class EconomicData:
     """Données macroéconomiques."""
+
     year: int
-    gdp: float = 0.0                    # PIB (M USD)
-    gdp_growth: float = 0.0            # Croissance PIB (%)
-    inflation: float = 0.0             # Inflation (%)
-    exchange_rate: float = 0.0         # Taux de change
-    unemployment: float = 0.0          # Chômage (%)
-    trade_balance: float = 0.0         # Balance commerciale (M USD)
-    fdi_inflow: float = 0.0            # IDE entrants (M USD)
-    remittances: float = 0.0           # Transferts (M USD)
-    informal_sector_pct: float = 0.0   # Secteur informel (% PIB)
+    gdp: float = 0.0  # PIB (M USD)
+    gdp_growth: float = 0.0  # Croissance PIB (%)
+    inflation: float = 0.0  # Inflation (%)
+    exchange_rate: float = 0.0  # Taux de change
+    unemployment: float = 0.0  # Chômage (%)
+    trade_balance: float = 0.0  # Balance commerciale (M USD)
+    fdi_inflow: float = 0.0  # IDE entrants (M USD)
+    remittances: float = 0.0  # Transferts (M USD)
+    informal_sector_pct: float = 0.0  # Secteur informel (% PIB)
     # Sectoral GDP
     agriculture_gdp: float = 0.0
     mining_gdp: float = 0.0
@@ -103,21 +104,22 @@ class EconomicData:
 @dataclass
 class SocialData:
     """Données sociales et humaines."""
+
     year: int
-    population: float = 0.0            # Population (millions)
-    population_growth: float = 0.0     # Croissance démographique (%)
-    poverty_rate: float = 0.0          # Taux de pauvreté (%)
-    life_expectancy: float = 0.0       # Espérance de vie
-    literacy_rate: float = 0.0         # Taux d'alphabétisation (%)
-    school_enrollment: float = 0.0     # Taux de scolarisation (%)
+    population: float = 0.0  # Population (millions)
+    population_growth: float = 0.0  # Croissance démographique (%)
+    poverty_rate: float = 0.0  # Taux de pauvreté (%)
+    life_expectancy: float = 0.0  # Espérance de vie
+    literacy_rate: float = 0.0  # Taux d'alphabétisation (%)
+    school_enrollment: float = 0.0  # Taux de scolarisation (%)
     health_expenditure_pct: float = 0.0  # Dépenses santé (% PIB)
     education_expenditure_pct: float = 0.0  # Dépenses éducation (% PIB)
-    access_electricity: float = 0.0    # Accès électricité (%)
-    access_water: float = 0.0          # Accès eau potable (%)
-    access_internet: float = 0.0       # Accès internet (%)
-    mobile_penetration: float = 0.0    # Pénétration mobile (%)
-    under5_mortality: float = 0.0      # Mortalité <5 ans (pour 1000)
-    gini_coefficient: float = 0.0      # Coefficient de Gini
+    access_electricity: float = 0.0  # Accès électricité (%)
+    access_water: float = 0.0  # Accès eau potable (%)
+    access_internet: float = 0.0  # Accès internet (%)
+    mobile_penetration: float = 0.0  # Pénétration mobile (%)
+    under5_mortality: float = 0.0  # Mortalité <5 ans (pour 1000)
+    gini_coefficient: float = 0.0  # Coefficient de Gini
 
     def to_dict(self) -> dict:
         return {
@@ -240,13 +242,15 @@ class DataCollector:
         history = []
         for y in range(current_year - years + 1, current_year + 1):
             factor = 1.0 + (y - (current_year - years)) * 0.03
-            history.append({
-                "year": y,
-                "gdp": round(55_000 * factor, 0),
-                "revenue": round(12_500 * factor, 0),
-                "expenditure": round(14_000 * factor, 0),
-                "poverty_rate": round(max(50, 62 - (y - 2020) * 1.5), 1),
-                "inflation": round(max(5, 12.5 - (y - 2020) * 1.0), 1),
-                "electricity_access": round(min(50, 19 + (y - 2020) * 2.5), 1),
-            })
+            history.append(
+                {
+                    "year": y,
+                    "gdp": round(55_000 * factor, 0),
+                    "revenue": round(12_500 * factor, 0),
+                    "expenditure": round(14_000 * factor, 0),
+                    "poverty_rate": round(max(50, 62 - (y - 2020) * 1.5), 1),
+                    "inflation": round(max(5, 12.5 - (y - 2020) * 1.0), 1),
+                    "electricity_access": round(min(50, 19 + (y - 2020) * 2.5), 1),
+                }
+            )
         return history

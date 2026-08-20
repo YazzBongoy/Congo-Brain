@@ -27,8 +27,8 @@ class TransparencyService:
         self.db.refresh(report)
         return report
 
-    def get_dashboard(self) -> dict:
-        reports = self.db.query(TransparencyReport).all()
+    def get_dashboard(self, ministry: str | None = None) -> dict:
+        reports = self.list_reports(ministry)
         if not reports:
             return {
                 "total_reports": 0,
@@ -49,12 +49,14 @@ class TransparencyService:
 
         ministry_summary = []
         for m, data in by_ministry.items():
-            ministry_summary.append({
-                "ministry": m,
-                "avg_transparency_score": round(sum(data["scores"]) / len(data["scores"]), 1),
-                "avg_compliance_rate": round(sum(data["compliance"]) / len(data["compliance"]), 1),
-                "report_count": len(data["scores"]),
-            })
+            ministry_summary.append(
+                {
+                    "ministry": m,
+                    "avg_transparency_score": round(sum(data["scores"]) / len(data["scores"]), 1),
+                    "avg_compliance_rate": round(sum(data["compliance"]) / len(data["compliance"]), 1),
+                    "report_count": len(data["scores"]),
+                }
+            )
 
         total_scores = [r.transparency_score for r in reports]
         total_compliance = [r.compliance_rate for r in reports]

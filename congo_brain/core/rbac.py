@@ -5,6 +5,13 @@ from enum import Enum
 
 class Role(str, Enum):
     ADMIN = "admin"
+    NATIONAL_BUDGET_ADMIN = "national_budget_admin"
+    MINISTRY_BUDGET_OFFICER = "ministry_budget_officer"
+    PROJECT_MANAGER = "project_manager"
+    AUDITOR = "auditor"
+    EXECUTIVE_VIEWER = "executive_viewer"
+    PUBLIC_VIEWER = "public_viewer"
+    # Legacy roles retained for existing installations and token compatibility.
     ANALYST = "analyst"
     VIEWER = "viewer"
 
@@ -34,25 +41,97 @@ class Permission(str, Enum):
     USER_WRITE = "user:write"
     USER_DELETE = "user:delete"
 
+    # Append-only privileged activity log
+    AUDIT_READ = "audit:read"
+
+    # Cross-ministry government analytics and governance datasets
+    NATIONAL_ANALYTICS_READ = "national_analytics:read"
+
     # System
     SYSTEM_ADMIN = "system:admin"
 
 
 ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
     Role.ADMIN: {
-        Permission.BUDGET_READ, Permission.BUDGET_WRITE, Permission.BUDGET_DELETE,
-        Permission.INVESTMENT_READ, Permission.INVESTMENT_WRITE, Permission.INVESTMENT_OPTIMIZE,
-        Permission.SECURITY_READ, Permission.SECURITY_WRITE, Permission.SECURITY_RESOLVE,
-        Permission.TRANSPARENCY_READ, Permission.TRANSPARENCY_WRITE,
-        Permission.USER_READ, Permission.USER_WRITE, Permission.USER_DELETE,
+        Permission.BUDGET_READ,
+        Permission.BUDGET_WRITE,
+        Permission.BUDGET_DELETE,
+        Permission.INVESTMENT_READ,
+        Permission.INVESTMENT_WRITE,
+        Permission.INVESTMENT_OPTIMIZE,
+        Permission.SECURITY_READ,
+        Permission.SECURITY_WRITE,
+        Permission.SECURITY_RESOLVE,
+        Permission.TRANSPARENCY_READ,
+        Permission.TRANSPARENCY_WRITE,
+        Permission.USER_READ,
+        Permission.USER_WRITE,
+        Permission.USER_DELETE,
+        Permission.AUDIT_READ,
+        Permission.NATIONAL_ANALYTICS_READ,
         Permission.SYSTEM_ADMIN,
     },
-    Role.ANALYST: {
-        Permission.BUDGET_READ, Permission.BUDGET_WRITE,
-        Permission.INVESTMENT_READ, Permission.INVESTMENT_WRITE, Permission.INVESTMENT_OPTIMIZE,
-        Permission.SECURITY_READ, Permission.SECURITY_WRITE,
-        Permission.TRANSPARENCY_READ, Permission.TRANSPARENCY_WRITE,
+    Role.NATIONAL_BUDGET_ADMIN: {
+        Permission.BUDGET_READ,
+        Permission.BUDGET_WRITE,
+        Permission.BUDGET_DELETE,
+        Permission.INVESTMENT_READ,
+        Permission.INVESTMENT_WRITE,
+        Permission.INVESTMENT_OPTIMIZE,
+        Permission.TRANSPARENCY_READ,
+        Permission.TRANSPARENCY_WRITE,
         Permission.USER_READ,
+        Permission.USER_WRITE,
+        Permission.AUDIT_READ,
+        Permission.NATIONAL_ANALYTICS_READ,
+    },
+    Role.MINISTRY_BUDGET_OFFICER: {
+        Permission.BUDGET_READ,
+        Permission.BUDGET_WRITE,
+        Permission.INVESTMENT_READ,
+        Permission.TRANSPARENCY_READ,
+        Permission.TRANSPARENCY_WRITE,
+    },
+    Role.PROJECT_MANAGER: {
+        Permission.BUDGET_READ,
+        Permission.INVESTMENT_READ,
+        Permission.INVESTMENT_WRITE,
+        Permission.INVESTMENT_OPTIMIZE,
+        Permission.TRANSPARENCY_READ,
+    },
+    Role.AUDITOR: {
+        Permission.BUDGET_READ,
+        Permission.INVESTMENT_READ,
+        Permission.SECURITY_READ,
+        Permission.TRANSPARENCY_READ,
+        Permission.USER_READ,
+        Permission.AUDIT_READ,
+        Permission.NATIONAL_ANALYTICS_READ,
+    },
+    Role.EXECUTIVE_VIEWER: {
+        Permission.BUDGET_READ,
+        Permission.INVESTMENT_READ,
+        Permission.SECURITY_READ,
+        Permission.TRANSPARENCY_READ,
+        Permission.NATIONAL_ANALYTICS_READ,
+    },
+    Role.PUBLIC_VIEWER: {
+        Permission.BUDGET_READ,
+        Permission.INVESTMENT_READ,
+        Permission.TRANSPARENCY_READ,
+    },
+    Role.ANALYST: {
+        Permission.BUDGET_READ,
+        Permission.BUDGET_WRITE,
+        Permission.INVESTMENT_READ,
+        Permission.INVESTMENT_WRITE,
+        Permission.INVESTMENT_OPTIMIZE,
+        Permission.SECURITY_READ,
+        Permission.SECURITY_WRITE,
+        Permission.TRANSPARENCY_READ,
+        Permission.TRANSPARENCY_WRITE,
+        Permission.USER_READ,
+        Permission.NATIONAL_ANALYTICS_READ,
     },
     Role.VIEWER: {
         Permission.BUDGET_READ,

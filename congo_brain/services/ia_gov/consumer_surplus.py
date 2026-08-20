@@ -15,14 +15,15 @@ from dataclasses import dataclass
 @dataclass
 class PublicService:
     """Service public avec mesures de surplus."""
+
     name: str
-    willingness_to_pay: float = 0.0   # Disposition à payer (USD/mois)
-    actual_price: float = 0.0         # Prix payé (USD/mois)
-    quality_score: float = 0.0        # Qualité (0-10)
-    access_time_hours: float = 0.0    # Temps d'accès (heures)
-    indirect_cost: float = 0.0        # Coûts indirects (USD/mois)
-    coverage_pct: float = 0.0         # Couverture population (%)
-    satisfaction_pct: float = 0.0     # Satisfaction usagers (%)
+    willingness_to_pay: float = 0.0  # Disposition à payer (USD/mois)
+    actual_price: float = 0.0  # Prix payé (USD/mois)
+    quality_score: float = 0.0  # Qualité (0-10)
+    access_time_hours: float = 0.0  # Temps d'accès (heures)
+    indirect_cost: float = 0.0  # Coûts indirects (USD/mois)
+    coverage_pct: float = 0.0  # Couverture population (%)
+    satisfaction_pct: float = 0.0  # Satisfaction usagers (%)
 
     @property
     def consumer_surplus(self) -> float:
@@ -67,30 +68,86 @@ class PublicService:
 
 # Services publics de base de la RDC
 DRC_PUBLIC_SERVICES: list[dict] = [
-    {"name": "Électricité", "willingness_to_pay": 25.0, "actual_price": 15.0,
-     "quality_score": 3.0, "access_time_hours": 4.0, "indirect_cost": 8.0,
-     "coverage_pct": 19.0, "satisfaction_pct": 25.0},
-    {"name": "Internet", "willingness_to_pay": 20.0, "actual_price": 12.0,
-     "quality_score": 4.0, "access_time_hours": 1.0, "indirect_cost": 3.0,
-     "coverage_pct": 23.0, "satisfaction_pct": 35.0},
-    {"name": "Eau potable", "willingness_to_pay": 15.0, "actual_price": 5.0,
-     "quality_score": 5.0, "access_time_hours": 2.0, "indirect_cost": 2.0,
-     "coverage_pct": 52.0, "satisfaction_pct": 40.0},
-    {"name": "Santé", "willingness_to_pay": 30.0, "actual_price": 8.0,
-     "quality_score": 4.0, "access_time_hours": 6.0, "indirect_cost": 12.0,
-     "coverage_pct": 45.0, "satisfaction_pct": 30.0},
-    {"name": "Transport", "willingness_to_pay": 10.0, "actual_price": 3.0,
-     "quality_score": 3.5, "access_time_hours": 3.0, "indirect_cost": 5.0,
-     "coverage_pct": 40.0, "satisfaction_pct": 28.0},
-    {"name": "Éducation", "willingness_to_pay": 20.0, "actual_price": 2.0,
-     "quality_score": 4.5, "access_time_hours": 1.5, "indirect_cost": 4.0,
-     "coverage_pct": 107.0, "satisfaction_pct": 45.0},
-    {"name": "Justice", "willingness_to_pay": 15.0, "actual_price": 5.0,
-     "quality_score": 3.0, "access_time_hours": 8.0, "indirect_cost": 10.0,
-     "coverage_pct": 30.0, "satisfaction_pct": 20.0},
-    {"name": "Sécurité alimentaire", "willingness_to_pay": 25.0, "actual_price": 18.0,
-     "quality_score": 4.0, "access_time_hours": 2.0, "indirect_cost": 3.0,
-     "coverage_pct": 60.0, "satisfaction_pct": 35.0},
+    {
+        "name": "Électricité",
+        "willingness_to_pay": 25.0,
+        "actual_price": 15.0,
+        "quality_score": 3.0,
+        "access_time_hours": 4.0,
+        "indirect_cost": 8.0,
+        "coverage_pct": 19.0,
+        "satisfaction_pct": 25.0,
+    },
+    {
+        "name": "Internet",
+        "willingness_to_pay": 20.0,
+        "actual_price": 12.0,
+        "quality_score": 4.0,
+        "access_time_hours": 1.0,
+        "indirect_cost": 3.0,
+        "coverage_pct": 23.0,
+        "satisfaction_pct": 35.0,
+    },
+    {
+        "name": "Eau potable",
+        "willingness_to_pay": 15.0,
+        "actual_price": 5.0,
+        "quality_score": 5.0,
+        "access_time_hours": 2.0,
+        "indirect_cost": 2.0,
+        "coverage_pct": 52.0,
+        "satisfaction_pct": 40.0,
+    },
+    {
+        "name": "Santé",
+        "willingness_to_pay": 30.0,
+        "actual_price": 8.0,
+        "quality_score": 4.0,
+        "access_time_hours": 6.0,
+        "indirect_cost": 12.0,
+        "coverage_pct": 45.0,
+        "satisfaction_pct": 30.0,
+    },
+    {
+        "name": "Transport",
+        "willingness_to_pay": 10.0,
+        "actual_price": 3.0,
+        "quality_score": 3.5,
+        "access_time_hours": 3.0,
+        "indirect_cost": 5.0,
+        "coverage_pct": 40.0,
+        "satisfaction_pct": 28.0,
+    },
+    {
+        "name": "Éducation",
+        "willingness_to_pay": 20.0,
+        "actual_price": 2.0,
+        "quality_score": 4.5,
+        "access_time_hours": 1.5,
+        "indirect_cost": 4.0,
+        "coverage_pct": 107.0,
+        "satisfaction_pct": 45.0,
+    },
+    {
+        "name": "Justice",
+        "willingness_to_pay": 15.0,
+        "actual_price": 5.0,
+        "quality_score": 3.0,
+        "access_time_hours": 8.0,
+        "indirect_cost": 10.0,
+        "coverage_pct": 30.0,
+        "satisfaction_pct": 20.0,
+    },
+    {
+        "name": "Sécurité alimentaire",
+        "willingness_to_pay": 25.0,
+        "actual_price": 18.0,
+        "quality_score": 4.0,
+        "access_time_hours": 2.0,
+        "indirect_cost": 3.0,
+        "coverage_pct": 60.0,
+        "satisfaction_pct": 35.0,
+    },
 ]
 
 
@@ -132,11 +189,9 @@ class ConsumerSurplusEngine:
 
     def get_cs_ranking(self) -> list[dict]:
         """Classement des services par CS effectif."""
-        return sorted([s.to_dict() for s in self.services.values()],
-                      key=lambda x: x["effective_cs"], reverse=True)
+        return sorted([s.to_dict() for s in self.services.values()], key=lambda x: x["effective_cs"], reverse=True)
 
-    def simulate_improvement(self, service_name: str, quality_delta: float = 0,
-                              price_delta: float = 0) -> dict:
+    def simulate_improvement(self, service_name: str, quality_delta: float = 0, price_delta: float = 0) -> dict:
         """Simule l'amélioration d'un service."""
         if service_name not in self.services:
             return {"error": f"Service {service_name} non trouvé"}

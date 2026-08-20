@@ -9,7 +9,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Column, Integer, Float, String, Text, Boolean, DateTime, ForeignKey, Index,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
 )
 from sqlalchemy.orm import relationship
 
@@ -21,6 +27,7 @@ def _utcnow() -> datetime:
 
 
 # ── Province ───────────────────────────────────────────────────
+
 
 class Province(Base):
     __tablename__ = "geos_provinces"
@@ -52,6 +59,7 @@ class Province(Base):
 
 # ── Citizen ────────────────────────────────────────────────────
 
+
 class Citizen(Base):
     __tablename__ = "geos_citizens"
 
@@ -74,6 +82,7 @@ class Citizen(Base):
 
 
 # ── Company ────────────────────────────────────────────────────
+
 
 class Company(Base):
     __tablename__ = "geos_companies"
@@ -98,12 +107,19 @@ class Company(Base):
 
     @property
     def producer_surplus(self) -> float:
-        total = (self.production_cost + self.tax_burden + self.admin_cost
-                 + self.corruption_cost + self.logistics_cost + self.energy_cost)
+        total = (
+            self.production_cost
+            + self.tax_burden
+            + self.admin_cost
+            + self.corruption_cost
+            + self.logistics_cost
+            + self.energy_cost
+        )
         return max(0, self.revenue - total)
 
 
 # ── Ministry ───────────────────────────────────────────────────
+
 
 class Ministry(Base):
     __tablename__ = "geos_ministries"
@@ -121,7 +137,7 @@ class Ministry(Base):
     created_at = Column(DateTime, default=_utcnow)
 
     projects = relationship("Project", back_populates="ministry")
-    budgets = relationship("Budget", back_populates="ministry")
+    budgets = relationship("congo_brain.models.geos.entities.Budget", back_populates="ministry")
 
     @property
     def governance_score(self) -> float:
@@ -129,7 +145,8 @@ class Ministry(Base):
             0.40 * self.optimization_score
             + 0.20 * self.transparency_score
             + 0.20 * self.performance_score
-            + 0.20 * self.satisfaction_score, 1
+            + 0.20 * self.satisfaction_score,
+            1,
         )
 
     @property
@@ -138,6 +155,7 @@ class Ministry(Base):
 
 
 # ── Budget ─────────────────────────────────────────────────────
+
 
 class Budget(Base):
     __tablename__ = "geos_budgets"
@@ -159,6 +177,7 @@ class Budget(Base):
 
 
 # ── Resource (Natural) ────────────────────────────────────────
+
 
 class Resource(Base):
     __tablename__ = "geos_resources"
@@ -196,6 +215,7 @@ class Resource(Base):
 
 # ── Tax ────────────────────────────────────────────────────────
 
+
 class Tax(Base):
     __tablename__ = "geos_taxes"
 
@@ -212,6 +232,7 @@ class Tax(Base):
 
 
 # ── Project ────────────────────────────────────────────────────
+
 
 class Project(Base):
     __tablename__ = "geos_projects"
@@ -246,8 +267,7 @@ class Project(Base):
 
     @property
     def snn_impact(self) -> float:
-        return (self.cs_impact + self.ps_impact + self.gr_impact
-                + self.nrv_impact - self.dwl_impact - self.ec_impact)
+        return self.cs_impact + self.ps_impact + self.gr_impact + self.nrv_impact - self.dwl_impact - self.ec_impact
 
     @property
     def execution_rate(self) -> float:
@@ -255,6 +275,7 @@ class Project(Base):
 
 
 # ── Infrastructure ─────────────────────────────────────────────
+
 
 class Infrastructure(Base):
     __tablename__ = "geos_infrastructures"
@@ -276,6 +297,7 @@ class Infrastructure(Base):
 
 
 # ── Public Service ─────────────────────────────────────────────
+
 
 class PublicService(Base):
     __tablename__ = "geos_public_services"
@@ -306,6 +328,7 @@ class PublicService(Base):
 
 # ── Contract ───────────────────────────────────────────────────
 
+
 class Contract(Base):
     __tablename__ = "geos_contracts"
 
@@ -318,7 +341,7 @@ class Contract(Base):
     status = Column(String(50), default="awarded")  # awarded, ongoing, completed, cancelled
     award_date = Column(DateTime, nullable=True)
     is_competitive = Column(Boolean, default=True)
-    has Beneficial Ownership = Column(Boolean, default=False)
+    has_beneficial_ownership = Column(Boolean, default=False)
     corruption_flag = Column(Boolean, default=False)
     anomaly_score = Column(Float, default=0.0)
     created_at = Column(DateTime, default=_utcnow)
@@ -334,6 +357,7 @@ class Contract(Base):
 
 
 # ── Payment ────────────────────────────────────────────────────
+
 
 class Payment(Base):
     __tablename__ = "geos_payments"
@@ -352,6 +376,7 @@ class Payment(Base):
 
 # ── Market ─────────────────────────────────────────────────────
 
+
 class Market(Base):
     __tablename__ = "geos_markets"
 
@@ -368,6 +393,7 @@ class Market(Base):
 
 
 # ── Indicator ──────────────────────────────────────────────────
+
 
 class Indicator(Base):
     __tablename__ = "geos_indicators"

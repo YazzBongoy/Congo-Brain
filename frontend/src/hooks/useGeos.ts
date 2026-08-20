@@ -31,6 +31,7 @@ export function useDashboard() {
     optimization: {
       budget: number
       total_snn: number
+      remaining: number
       allocations: Record<string, { fraction: number; snn: number }>
     }
     entity_counts: Record<string, number>

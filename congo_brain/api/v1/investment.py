@@ -7,6 +7,7 @@ from congo_brain.core.database import get_db
 from congo_brain.core.rbac import Permission
 from congo_brain.core.security import require_permission
 from congo_brain.schemas.investment import InvestmentCreate, InvestmentOut
+from congo_brain.services.audit_service import record_audit_event
 from congo_brain.services.investment_service import InvestmentService
 
 router = APIRouter(prefix="/investments", tags=["InvestSmart"])
@@ -31,20 +32,30 @@ def list_investments(
 @router.get("/optimize")
 def optimize_portfolio(
     budget: float = Query(..., description="Budget limit in FC"),
+    db: Session = Depends(get_db),
     svc: InvestmentService = Depends(_svc),
-    _user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
+    current_user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
 ) -> dict:
     result = svc.optimize(budget)
     result["selected_projects"] = [InvestmentOut.model_validate(p).model_dump() for p in result["selected_projects"]]
     result["projects_excluded"] = [InvestmentOut.model_validate(p).model_dump() for p in result["projects_excluded"]]
+    record_audit_event(
+        db,
+        current_user,
+        "investment_portfolio_optimization.executed",
+        "investment_portfolio",
+        "allocation",
+        detail={"budget": budget},
+    )
     return result
 
 
 @router.get("/scenarios")
 def compare_scenarios(
     budgets: str = Query(..., description="Comma-separated budget limits (e.g. 100000000,500000000,1000000000)"),
+    db: Session = Depends(get_db),
     svc: InvestmentService = Depends(_svc),
-    _user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
+    current_user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
 ) -> dict:
     """Compare optimization results across multiple budget scenarios."""
     try:
@@ -52,6 +63,14 @@ def compare_scenarios(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid budget format. Use comma-separated numbers.")
     results = svc.compare_scenarios(budget_limits)
+    record_audit_event(
+        db,
+        current_user,
+        "investment_portfolio_scenarios.executed",
+        "investment_portfolio",
+        "comparison",
+        detail={"budgets": budget_limits},
+    )
     return {"scenarios": results}
 
 
@@ -66,10 +85,19 @@ def investment_summary(
 @router.post("", response_model=InvestmentOut, status_code=201)
 def create_investment(
     body: InvestmentCreate,
+    db: Session = Depends(get_db),
     svc: InvestmentService = Depends(_svc),
-    _user: dict = Depends(require_permission(Permission.INVESTMENT_WRITE)),
+    current_user: dict = Depends(require_permission(Permission.INVESTMENT_WRITE)),
 ) -> InvestmentOut:
     inv = svc.create_investment(**body.model_dump())
+    record_audit_event(
+        db,
+        current_user,
+        "investment.created",
+        "investment",
+        inv.id,
+        detail={"project_name": inv.project_name, "province": inv.province, "sector": inv.sector},
+    )
     return InvestmentOut.model_validate(inv)
 
 

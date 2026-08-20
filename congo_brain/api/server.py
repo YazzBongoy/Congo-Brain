@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -14,9 +14,11 @@ from slowapi.util import get_remote_address
 
 from congo_brain import __app_name__, __version__
 from congo_brain.api.v1.router import v1_router
-from congo_brain.core.config import RATE_LIMIT_PER_MINUTE
+from congo_brain.core.config import ENVIRONMENT, RATE_LIMIT_PER_MINUTE
 from congo_brain.core.database import check_db_health, init_db
 from congo_brain.core.monitoring import PrometheusMiddleware, metrics_router
+from congo_brain.core.rbac import Permission
+from congo_brain.core.security import require_permission
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
@@ -42,7 +44,7 @@ app = FastAPI(
 )
 
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 app.add_middleware(
     CORSMiddleware,
@@ -60,8 +62,14 @@ app.include_router(metrics_router)
 # GraphQL
 try:
     from strawberry.fastapi import GraphQLRouter
+
     from congo_brain.api.graphql import schema as gql_schema
-    graphql_app = GraphQLRouter(gql_schema)
+
+    graphql_app = GraphQLRouter(
+        gql_schema,
+        graphql_ide=None if ENVIRONMENT in {"production", "staging"} else "graphiql",
+        dependencies=[Depends(require_permission(Permission.NATIONAL_ANALYTICS_READ))],
+    )
     app.include_router(graphql_app, prefix="/graphql")
 except ImportError:
     pass

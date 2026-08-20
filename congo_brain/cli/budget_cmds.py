@@ -29,7 +29,7 @@ def budget_status() -> None:
         info.append("Total depense: ", style="bold")
         info.append(f"{status['total_spent']:,.0f} FC\n", style="yellow")
         info.append("Taux d'execution: ", style="bold")
-        rate = status['overall_execution_rate']
+        rate = status["overall_execution_rate"]
         color = "green" if rate < 80 else "yellow" if rate < 100 else "red"
         info.append(f"{rate}%\n", style=color)
         console.print(Panel(info, title="Statut Budgetaire Global", border_style="cyan"))
@@ -62,7 +62,7 @@ def detect_anomalies() -> None:
         info.append("\nTransactions analysees: ", style="bold")
         info.append(f"{report['total_transactions']}\n", style="cyan")
         info.append("Anomalies detectees: ", style="bold")
-        info.append(f"{report['anomalies_detected']}\n", style="red" if report['anomalies_detected'] else "green")
+        info.append(f"{report['anomalies_detected']}\n", style="red" if report["anomalies_detected"] else "green")
         info.append("Taux d'anomalie: ", style="bold")
         info.append(f"{report['anomaly_rate']}%\n", style="yellow")
         console.print(Panel(info, title="Rapport de Detection d'Anomalies", border_style="red"))
@@ -83,8 +83,10 @@ def detect_anomalies() -> None:
             for t in report["anomalies"]:
                 reasons = t.anomaly_reason or "-"
                 table.add_row(
-                    t.reference_number, f"{t.amount:,.0f}",
-                    t.description[:35], t.beneficiary or "-",
+                    t.reference_number,
+                    f"{t.amount:,.0f}",
+                    t.description[:35],
+                    t.beneficiary or "-",
                     f"{t.anomaly_score:.2f}",
                     reasons,
                 )
@@ -116,10 +118,13 @@ def list_budgets() -> None:
         table.add_column("Annee", style="blue")
         for b in budgets:
             table.add_row(
-                str(b.id), b.ministry, b.sector,
+                str(b.id),
+                b.ministry,
+                b.sector,
                 f"{b.allocated_amount:,.0f}",
                 f"{b.spent_amount:,.0f}",
-                f"{b.execution_rate}%", str(b.fiscal_year),
+                f"{b.execution_rate}%",
+                str(b.fiscal_year),
             )
         console.print(table)
     finally:

@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 @dataclass
 class DecisionRecommendation:
     """Recommandation de décision IA."""
+
     question: str
     allocations: list[dict] = field(default_factory=list)
     expected_impacts: dict = field(default_factory=dict)

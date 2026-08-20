@@ -4,13 +4,11 @@ from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
 
-from alembic import context
-
-from congo_brain.core.config import DATABASE_URL
-from congo_brain.core.database import Base
-
 # Import all models so Alembic can detect them
 import congo_brain.models  # noqa: F401
+from alembic import context
+from congo_brain.core.config import DATABASE_URL
+from congo_brain.core.database import Base
 
 config = context.config
 config.set_main_option("sqlalchemy.url", DATABASE_URL)

@@ -26,20 +26,27 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
+from congo_brain.core.database import get_db
 from congo_brain.core.rbac import Permission
 from congo_brain.core.security import require_permission
-from congo_brain.services.ia_gov.resource_optimizer import ResourceOptimizationEngine
-from congo_brain.services.ia_gov.consumer_surplus import ConsumerSurplusEngine
-from congo_brain.services.ia_gov.producer_surplus import ProducerSurplusEngine
-from congo_brain.services.ia_gov.national_resource import NationalResourceEngine
-from congo_brain.services.ia_gov.governance_score import GovernanceScoreEngine
-from congo_brain.services.ia_gov.corruption_detector import CorruptionDetectionEngine
-from congo_brain.services.ia_gov.digital_twin import NationalDigitalTwin
-from congo_brain.services.ia_gov.decision_ai import DecisionAI
+from congo_brain.services.audit_service import record_audit_event
 from congo_brain.services.ia_gov.collectors import DataCollector
+from congo_brain.services.ia_gov.consumer_surplus import ConsumerSurplusEngine
+from congo_brain.services.ia_gov.corruption_detector import CorruptionDetectionEngine
+from congo_brain.services.ia_gov.decision_ai import DecisionAI
+from congo_brain.services.ia_gov.digital_twin import NationalDigitalTwin
+from congo_brain.services.ia_gov.governance_score import GovernanceScoreEngine
+from congo_brain.services.ia_gov.national_resource import NationalResourceEngine
+from congo_brain.services.ia_gov.producer_surplus import ProducerSurplusEngine
+from congo_brain.services.ia_gov.resource_optimizer import ResourceOptimizationEngine
 
-router = APIRouter(prefix="/ia-gov", tags=["IA GOV"])
+router = APIRouter(
+    prefix="/ia-gov",
+    tags=["IA GOV"],
+    dependencies=[Depends(require_permission(Permission.NATIONAL_ANALYTICS_READ))],
+)
 
 
 class DecisionRequest(BaseModel):
@@ -59,6 +66,7 @@ class InvestmentSimulation(BaseModel):
 
 
 # ── Full Dashboard ─────────────────────────────────────────────
+
 
 @router.get("/dashboard")
 def ia_gov_full_dashboard(
@@ -119,6 +127,7 @@ def ia_gov_full_dashboard(
 
 # ── Module 1: Resource Optimization Engine ─────────────────────
 
+
 @router.get("/optimizer")
 def optimizer_dashboard(
     _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
@@ -131,14 +140,25 @@ def optimizer_dashboard(
 @router.post("/optimizer/simulate")
 def simulate_policy(
     body: PolicySimulation,
-    _user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
 ) -> dict:
     engine = ResourceOptimizationEngine()
     engine.load_drc_baseline()
-    return engine.simulate_policy(body.policy_name, body.sector_changes)
+    result = engine.simulate_policy(body.policy_name, body.sector_changes)
+    record_audit_event(
+        db,
+        current_user,
+        "policy_simulation.executed",
+        "ia_gov_policy",
+        body.policy_name,
+        detail={"sector_changes": body.sector_changes},
+    )
+    return result
 
 
 # ── Module 2: Consumer Surplus Engine ──────────────────────────
+
 
 @router.get("/consumer-surplus")
 def consumer_surplus_dashboard(
@@ -159,6 +179,7 @@ def cs_ranking(
 
 
 # ── Module 3: Producer Surplus Engine ──────────────────────────
+
 
 @router.get("/producer-surplus")
 def producer_surplus_dashboard(
@@ -184,14 +205,29 @@ def simulate_reform(
     tax_reduction: float = Query(0.1),
     admin_reduction: float = Query(0.1),
     corruption_reduction: float = Query(0.1),
-    _user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
 ) -> dict:
     engine = ProducerSurplusEngine()
     engine.load_baseline()
-    return engine.simulate_reform(reform_name, tax_reduction, admin_reduction, corruption_reduction)
+    result = engine.simulate_reform(reform_name, tax_reduction, admin_reduction, corruption_reduction)
+    record_audit_event(
+        db,
+        current_user,
+        "producer_reform_simulation.executed",
+        "ia_gov_reform",
+        reform_name,
+        detail={
+            "tax_reduction": tax_reduction,
+            "admin_reduction": admin_reduction,
+            "corruption_reduction": corruption_reduction,
+        },
+    )
+    return result
 
 
 # ── Module 4: National Resource Engine ─────────────────────────
+
 
 @router.get("/resources")
 def resources_dashboard(
@@ -215,6 +251,7 @@ def mineral_breakdown(
 
 # ── Module 5: Governance Score ─────────────────────────────────
 
+
 @router.get("/governance")
 def governance_dashboard(
     _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
@@ -234,6 +271,7 @@ def governance_ranking(
 
 
 # ── Module 6: Corruption Detector ─────────────────────────────
+
 
 @router.get("/corruption")
 def corruption_dashboard(
@@ -255,6 +293,7 @@ def corruption_risk_summary(
 
 # ── Module 7: National Digital Twin ───────────────────────────
 
+
 @router.get("/twin")
 def twin_dashboard(
     _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
@@ -267,11 +306,21 @@ def twin_dashboard(
 @router.post("/twin/simulate")
 def simulate_investment(
     body: InvestmentSimulation,
-    _user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
 ) -> dict:
     engine = NationalDigitalTwin()
     engine.load_baseline()
-    return engine.simulate_investment(body.province, body.sector, body.amount)
+    result = engine.simulate_investment(body.province, body.sector, body.amount)
+    record_audit_event(
+        db,
+        current_user,
+        "digital_twin_simulation.executed",
+        "ia_gov_digital_twin",
+        body.province,
+        detail={"sector": body.sector, "amount": body.amount},
+    )
+    return result
 
 
 @router.get("/twin/compare")
@@ -286,13 +335,23 @@ def compare_provinces(
 
 # ── Module 8: Decision AI ─────────────────────────────────────
 
+
 @router.post("/decision")
 def ask_decision(
     body: DecisionRequest,
-    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
 ) -> dict:
     ai = DecisionAI()
     result = ai.answer(body.question, body.budget)
+    record_audit_event(
+        db,
+        current_user,
+        "decision_analysis.executed",
+        "ia_gov_decision",
+        "advisory",
+        detail={"question": body.question, "budget": body.budget},
+    )
     return result.to_dict()
 
 

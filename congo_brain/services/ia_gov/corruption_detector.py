@@ -34,15 +34,16 @@ class RiskLevel(str, Enum):
 @dataclass
 class Anomaly:
     """Anomalie détectée."""
+
     id: str
     anomaly_type: str
     description: str
     sector: str
     province: str = ""
-    amount: float = 0.0           # Montant en jeu (M USD)
-    risk_score: float = 0.0       # Score de risque (0-100)
+    amount: float = 0.0  # Montant en jeu (M USD)
+    risk_score: float = 0.0  # Score de risque (0-100)
     risk_level: str = ""
-    confidence: float = 0.0       # Confiance de la détection (0-100)
+    confidence: float = 0.0  # Confiance de la détection (0-100)
     date_detected: str = ""
     status: str = "actif"
 
@@ -63,22 +64,70 @@ class Anomaly:
 
 # Anomalies types détectées en RDC
 DRC_ANOMALY_PATTERNS: list[dict] = [
-    {"type": "surfacturation", "description": "Coût routes 3x au-dessus du marché international",
-     "sector": "Infrastructure", "amount": 150, "risk_score": 85, "confidence": 90},
-    {"type": "depassement_budgetaire", "description": "Projet barrage +120% du budget initial",
-     "sector": "Énergie", "amount": 200, "risk_score": 78, "confidence": 85},
-    {"type": "retard_anormal", "description": "Route Kinshasa-Lubumbashi: 5 ans de retard",
-     "sector": "Transport", "amount": 80, "risk_score": 72, "confidence": 95},
-    {"type": "double_paiement", "description": "Double facturation fournitures ministère",
-     "sector": "Santé", "amount": 12, "risk_score": 68, "confidence": 88},
-    {"type": "societe_fantome", "description": "Entreprise sans employés enregistrés, contrats publics",
-     "sector": "Mines", "amount": 45, "risk_score": 92, "confidence": 75},
-    {"type": "conflit_interet", "description": "Directeur entreprise adjudicataire parent fonctionnaire",
-     "sector": "Infrastructure", "amount": 25, "risk_score": 88, "confidence": 80},
-    {"type": "pattern_inhabituel", "description": "Paiements concentrés fin d'année fiscale",
-     "sector": "Finance", "amount": 60, "risk_score": 55, "confidence": 70},
-    {"type": "anomalie_cout", "description": "Coût administratif 40% au-dessus de la moyenne",
-     "sector": "Administration", "amount": 35, "risk_score": 62, "confidence": 82},
+    {
+        "type": "surfacturation",
+        "description": "Coût routes 3x au-dessus du marché international",
+        "sector": "Infrastructure",
+        "amount": 150,
+        "risk_score": 85,
+        "confidence": 90,
+    },
+    {
+        "type": "depassement_budgetaire",
+        "description": "Projet barrage +120% du budget initial",
+        "sector": "Énergie",
+        "amount": 200,
+        "risk_score": 78,
+        "confidence": 85,
+    },
+    {
+        "type": "retard_anormal",
+        "description": "Route Kinshasa-Lubumbashi: 5 ans de retard",
+        "sector": "Transport",
+        "amount": 80,
+        "risk_score": 72,
+        "confidence": 95,
+    },
+    {
+        "type": "double_paiement",
+        "description": "Double facturation fournitures ministère",
+        "sector": "Santé",
+        "amount": 12,
+        "risk_score": 68,
+        "confidence": 88,
+    },
+    {
+        "type": "societe_fantome",
+        "description": "Entreprise sans employés enregistrés, contrats publics",
+        "sector": "Mines",
+        "amount": 45,
+        "risk_score": 92,
+        "confidence": 75,
+    },
+    {
+        "type": "conflit_interet",
+        "description": "Directeur entreprise adjudicataire parent fonctionnaire",
+        "sector": "Infrastructure",
+        "amount": 25,
+        "risk_score": 88,
+        "confidence": 80,
+    },
+    {
+        "type": "pattern_inhabituel",
+        "description": "Paiements concentrés fin d'année fiscale",
+        "sector": "Finance",
+        "amount": 60,
+        "risk_score": 55,
+        "confidence": 70,
+    },
+    {
+        "type": "anomalie_cout",
+        "description": "Coût administratif 40% au-dessus de la moyenne",
+        "sector": "Administration",
+        "amount": 35,
+        "risk_score": 62,
+        "confidence": 82,
+    },
 ]
 
 
@@ -93,27 +142,25 @@ class CorruptionDetectionEngine:
 
     def load_baseline(self) -> None:
         from datetime import datetime, timezone
+
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         self.anomalies = []
         for i, data in enumerate(DRC_ANOMALY_PATTERNS):
             score = data["risk_score"]
-            level_name = (
-                "Critique" if score >= 80
-                else "Élevé" if score >= 60
-                else "Moyen" if score >= 40
-                else "Faible"
+            level_name = "Critique" if score >= 80 else "Élevé" if score >= 60 else "Moyen" if score >= 40 else "Faible"
+            self.anomalies.append(
+                Anomaly(
+                    id=f"ANO-{i + 1:04d}",
+                    anomaly_type=data["type"],
+                    description=data["description"],
+                    sector=data["sector"],
+                    amount=data["amount"],
+                    risk_score=score,
+                    risk_level=level_name,
+                    confidence=data["confidence"],
+                    date_detected=now,
+                )
             )
-            self.anomalies.append(Anomaly(
-                id=f"ANO-{i+1:04d}",
-                anomaly_type=data["type"],
-                description=data["description"],
-                sector=data["sector"],
-                amount=data["amount"],
-                risk_score=score,
-                risk_level=level_name,
-                confidence=data["confidence"],
-                date_detected=now,
-            ))
 
     def add_anomaly(self, anomaly: Anomaly) -> None:
         self.anomalies.append(anomaly)
@@ -155,7 +202,9 @@ class CorruptionDetectionEngine:
             "high": self.high_count,
             "medium": len([a for a in self.anomalies if a.risk_level == "Moyen"]),
             "low": len([a for a in self.anomalies if a.risk_level == "Faible"]),
-            "average_risk_score": round(sum(a.risk_score for a in self.anomalies) / len(self.anomalies), 1) if self.anomalies else 0,
+            "average_risk_score": round(sum(a.risk_score for a in self.anomalies) / len(self.anomalies), 1)
+            if self.anomalies
+            else 0,
         }
 
     def get_dashboard(self) -> dict:
@@ -164,6 +213,5 @@ class CorruptionDetectionEngine:
             "risk_summary": self.get_risk_summary(),
             "by_sector": self.get_by_sector(),
             "by_type": self.get_by_type(),
-            "anomalies": sorted([a.to_dict() for a in self.anomalies],
-                                key=lambda x: x["risk_score"], reverse=True),
+            "anomalies": sorted([a.to_dict() for a in self.anomalies], key=lambda x: x["risk_score"], reverse=True),
         }

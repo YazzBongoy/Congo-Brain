@@ -15,16 +15,23 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
+from congo_brain.core.database import get_db
 from congo_brain.core.rbac import Permission
 from congo_brain.core.security import require_permission
-from congo_brain.services.economic.welfare_model import WelfareModel, EconomyConstraints
-from congo_brain.services.economic.resource_optimizer import ResourceOptimizer
+from congo_brain.services.audit_service import record_audit_event
+from congo_brain.services.economic.corruption_calculator import CorruptionCalculator
 from congo_brain.services.economic.investment_allocator import InvestmentAllocator
 from congo_brain.services.economic.nwi import NationalWelfareIndex, NWIComponents
-from congo_brain.services.economic.corruption_calculator import CorruptionCalculator, DWLComponents, EnvironmentalCost
+from congo_brain.services.economic.resource_optimizer import ResourceOptimizer
+from congo_brain.services.economic.welfare_model import EconomyConstraints, WelfareModel
 
-router = APIRouter(prefix="/economic", tags=["MOEG"])
+router = APIRouter(
+    prefix="/economic",
+    tags=["MOEG"],
+    dependencies=[Depends(require_permission(Permission.NATIONAL_ANALYTICS_READ))],
+)
 
 
 class SectorInput(BaseModel):
@@ -75,6 +82,7 @@ class InvestmentWeights(BaseModel):
 
 # ── Welfare Model (SNN) ───────────────────────────────────────
 
+
 @router.get("/welfare")
 def welfare_dashboard(
     _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
@@ -87,24 +95,40 @@ def welfare_dashboard(
     wm.add_sector("Agriculture", cs=5.0, ps=3.0, revenue=1.0, nrv=2.0, dwl=0.5, ec=0.3)
     wm.add_sector("Forêt", cs=3.5, ps=2.0, revenue=0.8, nrv=4.0, dwl=0.4, ec=1.5)
     wm.add_sector("Numérique", cs=3.5, ps=4.5, revenue=1.8, nrv=0.5, dwl=0.4, ec=0.1)
-    wm.set_constraints(EconomyConstraints(
-        budget_ceiling=10.0, revenue=8.5,
-        current_debt_to_gdp=45.0, gdp=55.0, current_inflation=3.0,
-    ))
+    wm.set_constraints(
+        EconomyConstraints(
+            budget_ceiling=10.0,
+            revenue=8.5,
+            current_debt_to_gdp=45.0,
+            gdp=55.0,
+            current_inflation=3.0,
+        )
+    )
     return wm.get_dashboard()
 
 
 @router.post("/welfare/sectors")
 def add_sector(
     body: SectorInput,
-    _user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
 ) -> dict:
     wm = WelfareModel()
     sw = wm.add_sector(body.sector, body.cs, body.ps, body.revenue, body.nrv, body.dwl, body.ec)
-    return sw.to_dict()
+    result = sw.to_dict()
+    record_audit_event(
+        db,
+        current_user,
+        "welfare_sector_analysis.executed",
+        "economic_welfare_sector",
+        body.sector,
+        detail=body.model_dump(),
+    )
+    return result
 
 
 # ── Resources (NRV) ───────────────────────────────────────────
+
 
 @router.get("/resources")
 def resources_dashboard(
@@ -132,6 +156,7 @@ def resource_recommendations(
 
 # ── Investment Allocation (NSB) ───────────────────────────────
 
+
 @router.get("/investments")
 def investments_dashboard(
     budget: float = Query(10000, description="Budget in millions USD"),
@@ -147,23 +172,42 @@ def investments_dashboard(
 def optimize_investments(
     budget: float = Query(10000, description="Budget in millions USD"),
     weights: InvestmentWeights | None = None,
-    _user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
 ) -> dict:
     ia = InvestmentAllocator()
     ia.load_baseline()
     ia.set_budget(budget)
     w = weights.model_dump() if weights else None
-    return ia.optimize(w)
+    result = ia.optimize(w)
+    record_audit_event(
+        db,
+        current_user,
+        "economic_investment_optimization.executed",
+        "economic_investment_optimization",
+        "allocation",
+        detail={"budget": budget, "weights": w},
+    )
+    return result
 
 
 @router.post("/investments/scenarios")
 def investment_scenarios(
     budgets: list[float] = Query([5000, 10000, 20000], description="Budget levels to compare"),
-    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
 ) -> dict:
     ia = InvestmentAllocator()
     ia.load_baseline()
     scenarios = ia.compare_scenarios(budgets)
+    record_audit_event(
+        db,
+        current_user,
+        "economic_investment_scenarios.executed",
+        "economic_investment_scenarios",
+        "comparison",
+        detail={"budgets": budgets},
+    )
     return {"budgets": budgets, "scenarios": scenarios}
 
 
@@ -179,6 +223,7 @@ def investment_rankings(
 
 
 # ── National Welfare Index (SNN-aligned) ──────────────────────
+
 
 @router.get("/nwi")
 def nwi_dashboard(
@@ -201,7 +246,8 @@ def nwi_dashboard(
 @router.post("/nwi/compute")
 def compute_nwi(
     body: NWIInput,
-    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.BUDGET_READ)),
 ) -> dict:
     nwi = NationalWelfareIndex()
     comp = NWIComponents(
@@ -218,10 +264,20 @@ def compute_nwi(
         max_nrv=body.max_nrv,
         max_sustainability=body.max_sustainability,
     )
-    return nwi.compute_nwi(comp)
+    result = nwi.compute_nwi(comp)
+    record_audit_event(
+        db,
+        current_user,
+        "national_welfare_analysis.executed",
+        "economic_nwi",
+        "calculation",
+        detail=body.model_dump(),
+    )
+    return result
 
 
 # ── Corruption + Environmental Cost ───────────────────────────
+
 
 @router.get("/corruption")
 def corruption_dashboard(
@@ -235,27 +291,44 @@ def corruption_dashboard(
 def corruption_scenarios(
     dwl_reduction: float = Query(25.0, description="DWL reduction percentage"),
     ec_reduction: float = Query(25.0, description="Environmental cost reduction percentage"),
-    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
 ) -> dict:
     cc = CorruptionCalculator()
-    return cc.scenario_analysis(dwl_reduction, ec_reduction)
+    result = cc.scenario_analysis(dwl_reduction, ec_reduction)
+    record_audit_event(
+        db,
+        current_user,
+        "corruption_scenario.executed",
+        "economic_corruption_scenario",
+        "comparison",
+        detail={"dwl_reduction": dwl_reduction, "ec_reduction": ec_reduction},
+    )
+    return result
 
 
 # ── Combined MOEG SNN Dashboard ──────────────────────────────
 
+
 @router.get("/dashboard")
 def moeg_dashboard(
     budget: float = Query(10000, description="Budget in millions USD"),
-    _user: dict = Depends(require_permission(Permission.BUDGET_READ)),
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_permission(Permission.INVESTMENT_OPTIMIZE)),
 ) -> dict:
     wm = WelfareModel()
     wm.add_sector("Énergie", 4.5, 5.0, 2.0, 3.0, 1.2, 0.8)
     wm.add_sector("Industrie minière", 2.0, 6.5, 3.0, 8.0, 1.5, 1.2)
     wm.add_sector("Agriculture", 5.0, 3.0, 1.0, 2.0, 0.5, 0.3)
-    wm.set_constraints(EconomyConstraints(
-        budget_ceiling=10.0, revenue=8.5,
-        current_debt_to_gdp=45.0, gdp=55.0, current_inflation=3.0,
-    ))
+    wm.set_constraints(
+        EconomyConstraints(
+            budget_ceiling=10.0,
+            revenue=8.5,
+            current_debt_to_gdp=45.0,
+            gdp=55.0,
+            current_inflation=3.0,
+        )
+    )
 
     ro = ResourceOptimizer()
     ro.load_baseline()
@@ -271,7 +344,7 @@ def moeg_dashboard(
 
     cc = CorruptionCalculator()
 
-    return {
+    result = {
         "model": "MOEG",
         "description": "Modele d'Optimisation Economique de la Gouvernance — Surplus National Net",
         "formula": "SNN = CS + PS + GR + NRV - DWL - EC",
@@ -281,3 +354,12 @@ def moeg_dashboard(
         "nwi": nwi.compute_nwi(),
         "corruption": cc.get_dashboard(),
     }
+    record_audit_event(
+        db,
+        current_user,
+        "economic_dashboard.computed",
+        "economic_dashboard",
+        "national",
+        detail={"budget": budget},
+    )
+    return result

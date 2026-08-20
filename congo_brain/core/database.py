@@ -33,6 +33,7 @@ def get_db() -> Session:  # type: ignore[misc]
 def init_db() -> None:
     """Create all tables."""
     import congo_brain.models  # noqa: F401 – ensure models are registered
+
     Base.metadata.create_all(bind=engine)
 
 

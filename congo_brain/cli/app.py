@@ -41,9 +41,12 @@ def version_callback(value: bool) -> None:
 @app.callback()
 def main(
     version: Optional[bool] = typer.Option(
-        None, "--version", "-v",
+        None,
+        "--version",
+        "-v",
         help="Afficher la version.",
-        callback=version_callback, is_eager=True,
+        callback=version_callback,
+        is_eager=True,
     ),
 ) -> None:
     """Congo-Brain — Plateforme IA de gouvernance pour la RDC."""
@@ -55,14 +58,18 @@ def health() -> None:
     from sqlalchemy import text
 
     from congo_brain.core.database import SessionLocal
+
     try:
         db = SessionLocal()
         db.execute(text("SELECT 1"))
         db.close()
-        console.print(Panel(
-            "[bold green]Systeme operationnel[/]\nBase de donnees: OK",
-            title="Health Check", border_style="green",
-        ))
+        console.print(
+            Panel(
+                "[bold green]Systeme operationnel[/]\nBase de donnees: OK",
+                title="Health Check",
+                border_style="green",
+            )
+        )
     except Exception as e:
         console.print(Panel(f"[bold red]Erreur[/]\n{e}", title="Health Check", border_style="red"))
         raise typer.Exit(code=1)
