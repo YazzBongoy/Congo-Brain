@@ -26,6 +26,9 @@ def get_db() -> Session:  # type: ignore[misc]
     db = SessionLocal()
     try:
         yield db  # type: ignore[misc]
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 

@@ -2,6 +2,7 @@
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from congo_brain.models.audit import AuditEvent
@@ -270,6 +271,73 @@ class TestAuditLog:
 
         assert db_session.query(User).filter(User.username == "must-rollback").first() is None
 
+    @pytest.mark.parametrize("operation", ["update", "delete"])
+    def test_user_change_rolls_back_when_audit_fails(
+        self,
+        operation: str,
+        client: TestClient,
+        auth_headers: dict,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from congo_brain.api.v1 import auth
+
+        created = client.post(
+            "/api/v1/auth/users",
+            headers=auth_headers,
+            json={
+                "username": f"rollback-{operation}",
+                "email": f"rollback-{operation}@example.cd",
+                "password": "strong-pass",
+                "role": "auditor",
+            },
+        ).json()
+        monkeypatch.setattr(auth, "record_audit_event", self._fail_audit)
+
+        with pytest.raises(RuntimeError, match="audit write failed"):
+            if operation == "update":
+                client.patch(
+                    f"/api/v1/auth/users/{created['id']}",
+                    headers=auth_headers,
+                    json={"role": "executive_viewer"},
+                )
+            else:
+                client.delete(f"/api/v1/auth/users/{created['id']}", headers=auth_headers)
+        db_session.rollback()
+
+        persisted = db_session.query(User).filter(User.id == created["id"]).one()
+        assert persisted.role == "auditor"
+
+    def test_real_audit_flush_failure_rolls_back_request_transaction(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        db_session: Session,
+    ) -> None:
+        def reject_audit_insert(session: Session, _flush_context: object, _instances: object) -> None:
+            if any(isinstance(item, AuditEvent) for item in session.new):
+                raise RuntimeError("database rejected audit insert")
+
+        event.listen(db_session.__class__, "before_flush", reject_audit_insert)
+        try:
+            with pytest.raises(RuntimeError, match="database rejected audit insert"):
+                client.post(
+                    "/api/v1/budgets",
+                    headers=auth_headers,
+                    json={
+                        "ministry": "Rejected Audit Ministry",
+                        "sector": "Test",
+                        "allocated_amount": 1000,
+                        "spent_amount": 0,
+                        "fiscal_year": 2026,
+                    },
+                )
+        finally:
+            event.remove(db_session.__class__, "before_flush", reject_audit_insert)
+
+        assert db_session.in_transaction() is False
+        assert db_session.query(Budget).filter(Budget.ministry == "Rejected Audit Ministry").first() is None
+
     def test_budget_creation_rolls_back_when_audit_fails(
         self,
         client: TestClient,
@@ -404,3 +472,33 @@ class TestAuditLog:
         db_session.rollback()
 
         assert db_session.query(model).filter(getattr(model, field) == value).first() is None
+
+    def test_security_resolution_rolls_back_when_audit_fails(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from congo_brain.api.v1 import security
+
+        created = client.post(
+            "/api/v1/security/alerts",
+            headers=auth_headers,
+            json={
+                "alert_type": "operational",
+                "severity": "high",
+                "province": "Resolution Rollback",
+                "description": "Must remain unresolved",
+                "risk_score": 80,
+            },
+        ).json()
+        monkeypatch.setattr(security, "record_audit_event", self._fail_audit)
+
+        with pytest.raises(RuntimeError, match="audit write failed"):
+            client.post(f"/api/v1/security/alerts/{created['id']}/resolve", headers=auth_headers)
+        db_session.rollback()
+
+        persisted = db_session.query(SecurityAlert).filter(SecurityAlert.id == created["id"]).one()
+        assert persisted.is_resolved is False
+        assert persisted.resolved_at is None

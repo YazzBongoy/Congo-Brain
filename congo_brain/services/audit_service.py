@@ -118,9 +118,13 @@ def record_audit_event(
         event_hash=hashlib.sha256(payload.encode("utf-8")).hexdigest(),
         created_at=created_at,
     )
-    db.add(audit_event)
-    db.commit()
-    db.refresh(audit_event)
+    try:
+        db.add(audit_event)
+        db.flush()
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     return audit_event
 
 
