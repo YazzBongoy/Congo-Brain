@@ -20,10 +20,13 @@ class TransparencyService:
     def get_report(self, report_id: int) -> TransparencyReport | None:
         return self.db.query(TransparencyReport).filter(TransparencyReport.id == report_id).first()
 
-    def create_report(self, **kwargs) -> TransparencyReport:  # type: ignore[no-untyped-def]
+    def create_report(self, *, commit: bool = True, **kwargs) -> TransparencyReport:  # type: ignore[no-untyped-def]
         report = TransparencyReport(**kwargs)
         self.db.add(report)
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         self.db.refresh(report)
         return report
 

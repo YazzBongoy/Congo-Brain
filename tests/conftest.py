@@ -10,6 +10,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 os.environ["DATABASE_URL"] = "sqlite:///test_congo_brain.db"
 os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
+os.environ["ENVIRONMENT"] = "development"
+os.environ["PUBLIC_REGISTRATION_ENABLED"] = "true"
+os.environ["KEYCLOAK_ENABLED"] = "false"
 
 from congo_brain.api.server import app  # noqa: E402
 from congo_brain.core.database import Base, get_db  # noqa: E402

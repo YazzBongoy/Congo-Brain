@@ -64,7 +64,7 @@ def create_alert(
     svc: SecurityService = Depends(_svc),
     current_user: dict = Depends(require_permission(Permission.SECURITY_WRITE)),
 ) -> SecurityAlertOut:
-    alert = svc.create_alert(**body.model_dump())
+    alert = svc.create_alert(commit=False, **body.model_dump())
     record_audit_event(
         db,
         current_user,
@@ -95,7 +95,7 @@ def resolve_alert(
     svc: SecurityService = Depends(_svc),
     current_user: dict = Depends(require_permission(Permission.SECURITY_RESOLVE)),
 ) -> SecurityAlertOut:
-    alert = svc.resolve_alert(alert_id)
+    alert = svc.resolve_alert(alert_id, commit=False)
     if not alert:
         raise HTTPException(status_code=404, detail="Security alert not found")
     record_audit_event(

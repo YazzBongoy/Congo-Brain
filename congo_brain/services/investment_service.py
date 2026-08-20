@@ -28,10 +28,13 @@ class InvestmentService:
     def get_investment(self, inv_id: int) -> Investment | None:
         return self.db.query(Investment).filter(Investment.id == inv_id).first()
 
-    def create_investment(self, **kwargs) -> Investment:  # type: ignore[no-untyped-def]
+    def create_investment(self, *, commit: bool = True, **kwargs) -> Investment:  # type: ignore[no-untyped-def]
         inv = Investment(**kwargs)
         self.db.add(inv)
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         self.db.refresh(inv)
         return inv
 

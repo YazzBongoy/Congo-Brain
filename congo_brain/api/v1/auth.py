@@ -169,7 +169,7 @@ def create_user(
         ministry=body.ministry,
     )
     db.add(user)
-    db.commit()
+    db.flush()
     db.refresh(user)
     record_audit_event(
         db,
@@ -219,7 +219,7 @@ def update_user(
         user.ministry = body.ministry
     if user.role == Role.MINISTRY_BUDGET_OFFICER.value and not user.ministry:
         raise HTTPException(status_code=422, detail="A ministry budget officer must be assigned to a ministry")
-    db.commit()
+    db.flush()
     db.refresh(user)
     record_audit_event(
         db,
@@ -251,7 +251,7 @@ def delete_user(
     deleted_username = user.username
     deleted_ministry = user.ministry
     db.delete(user)
-    db.commit()
+    db.flush()
     record_audit_event(
         db,
         current_user,

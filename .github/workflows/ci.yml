@@ -47,7 +47,7 @@ jobs:
           pip install -e .
 
       - name: Lint
-        run: ruff check congo_brain/ tests/
+        run: ruff check congo_brain/ alembic/ tests/
 
       - name: Type check
         run: mypy congo_brain/ --ignore-missing-imports
@@ -66,6 +66,12 @@ jobs:
           alembic upgrade head
           alembic downgrade base
           alembic upgrade head
+
+      - name: PostgreSQL audit integrity and concurrency
+        env:
+          POSTGRES_TEST_URL: postgresql+psycopg2://congo:test@localhost:5432/congo_brain_test
+          SECRET_KEY: ci-test-secret-key
+        run: pytest tests/test_postgres_audit_integration.py -v --tb=short
 
   frontend:
     runs-on: ubuntu-latest

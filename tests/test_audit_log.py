@@ -5,10 +5,19 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from congo_brain.models.audit import AuditEvent
+from congo_brain.models.budget import Budget, Transaction
+from congo_brain.models.investment import Investment
+from congo_brain.models.security_alert import SecurityAlert
+from congo_brain.models.transparency import TransparencyReport
+from congo_brain.models.user import User
 from congo_brain.services.audit_service import record_audit_event
 
 
 class TestAuditLog:
+    @staticmethod
+    def _fail_audit(*_args: object, **_kwargs: object) -> None:
+        raise RuntimeError("audit write failed")
+
     def test_admin_user_creation_is_audited(self, client: TestClient, auth_headers: dict) -> None:
         created = client.post(
             "/api/v1/auth/users",
@@ -235,3 +244,163 @@ class TestAuditLog:
         assert "also-secret" not in event.detail
         assert "private-key" not in event.detail
         assert event.detail.count("[REDACTED]") == 4
+
+    def test_user_creation_rolls_back_when_audit_fails(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from congo_brain.api.v1 import auth
+
+        monkeypatch.setattr(auth, "record_audit_event", self._fail_audit)
+        with pytest.raises(RuntimeError, match="audit write failed"):
+            client.post(
+                "/api/v1/auth/users",
+                headers=auth_headers,
+                json={
+                    "username": "must-rollback",
+                    "email": "must-rollback@example.cd",
+                    "password": "strong-pass",
+                    "role": "auditor",
+                },
+            )
+        db_session.rollback()
+
+        assert db_session.query(User).filter(User.username == "must-rollback").first() is None
+
+    def test_budget_creation_rolls_back_when_audit_fails(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from congo_brain.api.v1 import budget
+
+        monkeypatch.setattr(budget, "record_audit_event", self._fail_audit)
+        with pytest.raises(RuntimeError, match="audit write failed"):
+            client.post(
+                "/api/v1/budgets",
+                headers=auth_headers,
+                json={
+                    "ministry": "Rollback Ministry",
+                    "sector": "Test",
+                    "allocated_amount": 1000,
+                    "spent_amount": 0,
+                    "fiscal_year": 2026,
+                },
+            )
+        db_session.rollback()
+
+        assert db_session.query(Budget).filter(Budget.ministry == "Rollback Ministry").first() is None
+
+    def test_transaction_and_budget_total_roll_back_when_audit_fails(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        from congo_brain.api.v1 import budget
+
+        created = client.post(
+            "/api/v1/budgets",
+            headers=auth_headers,
+            json={
+                "ministry": "Transaction Rollback",
+                "sector": "Test",
+                "allocated_amount": 1000,
+                "spent_amount": 0,
+                "fiscal_year": 2026,
+            },
+        ).json()
+        monkeypatch.setattr(budget, "record_audit_event", self._fail_audit)
+        with pytest.raises(RuntimeError, match="audit write failed"):
+            client.post(
+                f"/api/v1/budgets/{created['id']}/transactions",
+                headers=auth_headers,
+                json={
+                    "budget_id": created["id"],
+                    "amount": 100,
+                    "description": "Must roll back",
+                    "transaction_type": "expense",
+                    "reference_number": "ROLLBACK-TX",
+                },
+            )
+        db_session.rollback()
+
+        persisted_budget = db_session.query(Budget).filter(Budget.id == created["id"]).one()
+        assert persisted_budget.spent_amount == 0
+        assert db_session.query(Transaction).filter(Transaction.reference_number == "ROLLBACK-TX").first() is None
+
+    @pytest.mark.parametrize(
+        ("module_name", "path", "payload", "model", "field", "value"),
+        [
+            (
+                "investment",
+                "/api/v1/investments",
+                {
+                    "project_name": "Rollback Investment",
+                    "sector": "Infrastructure",
+                    "province": "Kinshasa",
+                    "total_budget": 1000,
+                    "start_date": "2026-01-01",
+                    "expected_end_date": "2027-01-01",
+                },
+                Investment,
+                "project_name",
+                "Rollback Investment",
+            ),
+            (
+                "transparency",
+                "/api/v1/transparency",
+                {
+                    "ministry": "Rollback Transparency",
+                    "period": "2026-Q1",
+                    "transparency_score": 80,
+                    "compliance_rate": 75,
+                },
+                TransparencyReport,
+                "ministry",
+                "Rollback Transparency",
+            ),
+            (
+                "security",
+                "/api/v1/security/alerts",
+                {
+                    "alert_type": "operational",
+                    "severity": "high",
+                    "province": "Rollback Province",
+                    "description": "Must roll back",
+                    "risk_score": 80,
+                },
+                SecurityAlert,
+                "province",
+                "Rollback Province",
+            ),
+        ],
+    )
+    def test_domain_creation_rolls_back_when_audit_fails(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+        db_session: Session,
+        monkeypatch: pytest.MonkeyPatch,
+        module_name: str,
+        path: str,
+        payload: dict,
+        model: type,
+        field: str,
+        value: str,
+    ) -> None:
+        from congo_brain.api.v1 import investment, security, transparency
+
+        modules = {"investment": investment, "security": security, "transparency": transparency}
+        monkeypatch.setattr(modules[module_name], "record_audit_event", self._fail_audit)
+        with pytest.raises(RuntimeError, match="audit write failed"):
+            client.post(path, headers=auth_headers, json=payload)
+        db_session.rollback()
+
+        assert db_session.query(model).filter(getattr(model, field) == value).first() is None

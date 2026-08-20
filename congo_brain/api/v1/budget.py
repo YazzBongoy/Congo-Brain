@@ -43,7 +43,7 @@ def detect_anomalies(
     svc: BudgetService = Depends(_svc),
     current_user: dict = Depends(require_permission(Permission.BUDGET_WRITE)),
 ) -> dict:
-    report = svc.run_anomaly_detection(resolve_ministry_scope(current_user))
+    report = svc.run_anomaly_detection(resolve_ministry_scope(current_user), commit=False)
     report["anomalies"] = [TransactionOut.model_validate(t).model_dump() for t in report["anomalies"]]
     record_audit_event(
         db,
@@ -68,6 +68,7 @@ def anomaly_summary(
     result = svc.run_anomaly_detection_enhanced(
         threshold=threshold,
         ministry=resolve_ministry_scope(current_user),
+        commit=False,
     )
     record_audit_event(
         db,
@@ -103,6 +104,7 @@ def create_budget(
         body.allocated_amount,
         body.fiscal_year,
         body.spent_amount,
+        commit=False,
     )
     record_audit_event(
         db,
@@ -167,6 +169,7 @@ def create_transaction(
         body.transaction_type,
         body.reference_number,
         body.beneficiary,
+        commit=False,
     )
     record_audit_event(
         db,

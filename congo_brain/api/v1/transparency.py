@@ -45,7 +45,7 @@ def create_report(
     current_user: dict = Depends(require_permission(Permission.TRANSPARENCY_WRITE)),
 ) -> TransparencyReportOut:
     enforce_ministry_access(current_user, body.ministry)
-    report = svc.create_report(**body.model_dump())
+    report = svc.create_report(commit=False, **body.model_dump())
     record_audit_event(
         db,
         current_user,

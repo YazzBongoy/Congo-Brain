@@ -29,6 +29,8 @@ class BudgetService:
         allocated_amount: float,
         fiscal_year: int,
         spent_amount: float = 0.0,
+        *,
+        commit: bool = True,
     ) -> Budget:
         b = Budget(
             ministry=ministry,
@@ -38,7 +40,10 @@ class BudgetService:
             fiscal_year=fiscal_year,
         )
         self.db.add(b)
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         self.db.refresh(b)
         return b
 
@@ -78,6 +83,8 @@ class BudgetService:
         transaction_type: str,
         reference_number: str,
         beneficiary: str | None = None,
+        *,
+        commit: bool = True,
     ) -> Transaction:
         t = Transaction(
             budget_id=budget_id,
@@ -88,16 +95,19 @@ class BudgetService:
             reference_number=reference_number,
         )
         self.db.add(t)
-        self.db.commit()
-        self.db.refresh(t)
+        self.db.flush()
 
         budget = self.db.query(Budget).filter(Budget.id == budget_id).first()
         if budget:
             budget.spent_amount += amount
+        if commit:
             self.db.commit()
+        else:
+            self.db.flush()
+        self.db.refresh(t)
         return t
 
-    def run_anomaly_detection(self, ministry: str | None = None) -> dict:
+    def run_anomaly_detection(self, ministry: str | None = None, *, commit: bool = True) -> dict:
         transaction_query = self.db.query(Transaction).join(Budget)
         if ministry:
             transaction_query = transaction_query.filter(Budget.ministry == ministry)
@@ -113,7 +123,10 @@ class BudgetService:
 
         budgets = self.list_budgets(ministry)
         anomalies = detect_anomalies(transactions, budgets=budgets)
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
 
         rules_applied = [
             "z-score (ecart statistique global)",
@@ -133,7 +146,13 @@ class BudgetService:
             "anomalies": anomalies,
         }
 
-    def run_anomaly_detection_enhanced(self, threshold: float = 2.0, ministry: str | None = None) -> dict:
+    def run_anomaly_detection_enhanced(
+        self,
+        threshold: float = 2.0,
+        ministry: str | None = None,
+        *,
+        commit: bool = True,
+    ) -> dict:
         """Run anomaly detection with severity classification and summary."""
         from congo_brain.services.ai.anomaly_detector import analyze_transaction_stream
 
@@ -157,7 +176,10 @@ class BudgetService:
             budgets=budgets,
             threshold=threshold,
         )
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
 
         return {
             "total_transactions": summary.total_transactions,

@@ -148,15 +148,17 @@ Each audit event contains:
 
 Events form a hash chain. PostgreSQL append operations use a transaction-scoped advisory lock to prevent concurrent requests from creating branches.
 
+Privileged database mutations are flushed without an intermediate commit. The audit event then commits the business mutation and audit append in the same database transaction. If audit recording fails, closing or rolling back the request session removes the uncommitted business mutation. Audit details are recursively sanitized before serialization; credential-bearing keys such as passwords, tokens, authorization headers, client secrets, and API keys are stored as `[REDACTED]`.
+
 ### Immutability controls
 
 Three controls protect the log:
 
 1. The API exposes only a read endpoint; there are no update or delete routes.
 2. SQLAlchemy rejects ORM update and delete operations on `AuditEvent`.
-3. The PostgreSQL migration creates a trigger that rejects direct database `UPDATE` and `DELETE` operations.
+3. The PostgreSQL migration creates triggers that reject direct database `UPDATE`, `DELETE`, and `TRUNCATE` operations.
 
-Database superusers can still bypass database controls. Restrict superuser access, forward database logs to an external security system, and export audit events to immutable/WORM storage for high-assurance deployments.
+Database superusers and sufficiently privileged table owners can still alter or disable database triggers. Use a dedicated non-owner application role, restrict owner/superuser access, forward database logs to an external security system, and export audit events to immutable/WORM storage for high-assurance deployments.
 
 ### Reading and validating the log
 
@@ -194,7 +196,7 @@ Before authorizing staging or production:
 3. Confirm ministry officers cannot access a different ministry.
 4. Execute one privileged operation and verify its event appears in `/api/v1/auth/audit-log`.
 5. Confirm `chain_valid=true`.
-6. On PostgreSQL, verify direct update and deletion of an audit row fail with `audit_events is append-only`.
+6. On PostgreSQL, verify direct update, deletion, and truncation of audit events fail with `audit_events is append-only`.
 7. Forward application, Keycloak, ingress, and database security logs to centralized monitoring.
 8. Alert on repeated HTTP 401/403 responses, invalid audit chains, and failed audit writes.
 

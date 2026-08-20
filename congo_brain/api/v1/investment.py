@@ -89,7 +89,7 @@ def create_investment(
     svc: InvestmentService = Depends(_svc),
     current_user: dict = Depends(require_permission(Permission.INVESTMENT_WRITE)),
 ) -> InvestmentOut:
-    inv = svc.create_investment(**body.model_dump())
+    inv = svc.create_investment(commit=False, **body.model_dump())
     record_audit_event(
         db,
         current_user,
