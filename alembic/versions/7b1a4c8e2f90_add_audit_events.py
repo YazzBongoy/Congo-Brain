@@ -68,8 +68,17 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Remove the audit log schema."""
-    if op.get_bind().dialect.name == "postgresql":
+    """Remove an empty audit schema; never destroy recorded security evidence."""
+    bind = op.get_bind()
+    if bind.dialect.name == "postgresql":
+        # Serialize the evidence check and schema removal against concurrent appenders.
+        bind.execute(sa.text("LOCK TABLE audit_events IN ACCESS EXCLUSIVE MODE"))
+    has_records = bool(
+        bind.execute(sa.text("SELECT EXISTS (SELECT 1 FROM audit_events LIMIT 1)")).scalar()
+    )
+    if has_records:
+        raise RuntimeError("Refusing to downgrade: audit_events contains security evidence")
+    if bind.dialect.name == "postgresql":
         op.execute("DROP TRIGGER IF EXISTS audit_events_no_truncate ON audit_events")
         op.execute("DROP TRIGGER IF EXISTS audit_events_immutable ON audit_events")
         op.execute("DROP FUNCTION IF EXISTS prevent_audit_event_mutation()")

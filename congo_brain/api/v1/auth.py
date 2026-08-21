@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from congo_brain.core.config import KEYCLOAK_ENABLED, PUBLIC_REGISTRATION_ENABLED
 from congo_brain.core.database import get_db
-from congo_brain.core.rbac import Permission, Role, get_all_roles
+from congo_brain.core.rbac import Permission, Role, get_all_roles, get_role_permissions
 from congo_brain.core.security import (
     create_access_token,
     get_current_user,
@@ -30,10 +30,20 @@ from congo_brain.services.audit_service import record_audit_event, verify_audit_
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-def _enforce_role_assignment(current_user: dict, target_role: Role | None) -> None:
-    """Only platform administrators may grant the platform-administrator role."""
-    if target_role == Role.ADMIN and current_user.get("role") != Role.ADMIN.value:
-        raise HTTPException(status_code=403, detail="Only a platform administrator may assign the admin role")
+def _enforce_role_assignment(
+    current_user: dict,
+    target_role: Role | None,
+    *,
+    current_target_role: str | None = None,
+) -> None:
+    """Allow non-admins to manage only strictly less privileged roles."""
+    actor_role = str(current_user.get("role", ""))
+    if actor_role == Role.ADMIN.value:
+        return
+    actor_permissions = get_role_permissions(actor_role)
+    managed_roles = [role for role in (current_target_role, target_role.value if target_role else None) if role]
+    if any(not get_role_permissions(role) < actor_permissions for role in managed_roles):
+        raise HTTPException(status_code=403, detail="Role is outside the caller's delegation authority")
 
 
 def _ensure_local_user_management() -> None:
@@ -204,10 +214,10 @@ def update_user(
     current_user: dict = Depends(require_permission(Permission.USER_WRITE)),
 ) -> User:
     _ensure_local_user_management()
-    _enforce_role_assignment(current_user, body.role)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    _enforce_role_assignment(current_user, body.role, current_target_role=user.role)
     if body.email is not None:
         existing = db.query(User).filter(User.email == body.email, User.id != user_id).first()
         if existing:

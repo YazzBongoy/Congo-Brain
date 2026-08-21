@@ -87,7 +87,10 @@ def _try_keycloak(token: str) -> dict | None:
     subject = payload.get("sub")
     if not isinstance(subject, str) or not subject.strip():
         return None
-    roles = payload.get("realm_access", {}).get("roles", [])
+    realm_access = payload.get("realm_access")
+    if not isinstance(realm_access, dict):
+        return None
+    roles = realm_access.get("roles", [])
     if not isinstance(roles, list):
         return None
     role = next(
@@ -110,12 +113,36 @@ def _try_keycloak(token: str) -> dict | None:
     )
     if role is None:
         return None
+    attributes = payload.get("attributes", {})
+    if not isinstance(attributes, dict):
+        return None
+    direct_ministry = payload.get("ministry")
+    if direct_ministry is not None:
+        if not isinstance(direct_ministry, str):
+            return None
+        ministry = direct_ministry
+    else:
+        attribute_ministry = attributes.get("ministry")
+        if attribute_ministry is None:
+            ministry = None
+        elif (
+            isinstance(attribute_ministry, list)
+            and len(attribute_ministry) == 1
+            and isinstance(attribute_ministry[0], str)
+        ):
+            ministry = attribute_ministry[0]
+        else:
+            return None
+    email = payload.get("email", "")
+    preferred_username = payload.get("preferred_username", email)
+    if not isinstance(email, str) or not isinstance(preferred_username, str):
+        return None
     return {
         "sub": subject,
-        "username": payload.get("preferred_username", payload.get("email", "")),
-        "email": payload.get("email", ""),
+        "username": preferred_username,
+        "email": email,
         "role": role,
-        "ministry": payload.get("ministry") or (payload.get("attributes", {}).get("ministry") or [None])[0],
+        "ministry": ministry,
         "auth_source": "keycloak",
     }
 

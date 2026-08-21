@@ -34,6 +34,14 @@ spec:
                   key: secret-key
             - name: KEYCLOAK_ENABLED
               value: {{ .Values.env.KEYCLOAK_ENABLED | quote }}
+            {{- if eq (toString .Values.env.KEYCLOAK_ENABLED) "true" }}
+            - name: KEYCLOAK_SERVER_URL
+              value: {{ required "env.KEYCLOAK_SERVER_URL is required when Keycloak is enabled" .Values.env.KEYCLOAK_SERVER_URL | quote }}
+            - name: KEYCLOAK_REALM
+              value: {{ .Values.env.KEYCLOAK_REALM | quote }}
+            - name: KEYCLOAK_CLIENT_ID
+              value: {{ .Values.env.KEYCLOAK_CLIENT_ID | quote }}
+            {{- end }}
             - name: ENVIRONMENT
               value: {{ .Values.env.ENVIRONMENT | quote }}
           livenessProbe:

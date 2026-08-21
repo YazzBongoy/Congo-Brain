@@ -74,6 +74,33 @@ def test_keycloak_token_without_subject_is_rejected(
     assert exc.value.status_code == 401
 
 
+@pytest.mark.parametrize(
+    "malformed_claims",
+    [
+        {"realm_access": []},
+        {"realm_access": {"roles": ["executive_viewer"]}, "attributes": []},
+        {"realm_access": {"roles": ["executive_viewer"]}, "attributes": {"ministry": "Finances"}},
+        {"realm_access": {"roles": ["executive_viewer"]}, "preferred_username": ["not-scalar"]},
+        {"realm_access": {"roles": ["executive_viewer"]}, "email": {"value": "not-scalar"}},
+    ],
+)
+def test_malformed_keycloak_claim_shapes_are_rejected_with_401(
+    monkeypatch: pytest.MonkeyPatch,
+    malformed_claims: dict,
+) -> None:
+    monkeypatch.setattr(security, "KEYCLOAK_ENABLED", True)
+    monkeypatch.setattr(
+        security,
+        "decode_keycloak_token",
+        lambda _token: {"sub": "kc-malformed", **malformed_claims},
+    )
+
+    with pytest.raises(HTTPException) as exc:
+        security.get_current_user("keycloak-token")
+
+    assert exc.value.status_code == 401
+
+
 def test_local_login_is_disabled_in_keycloak_mode(
     client: TestClient,
     monkeypatch: pytest.MonkeyPatch,

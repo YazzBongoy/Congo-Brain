@@ -233,18 +233,45 @@ class TestAuditLog:
                 "password": "never-store-me",
                 "nested": {
                     "authorization": "Bearer secret-token",
+                    "authorization_header": "Bearer another-secret-token",
+                    "access_token": "access-secret",
+                    "refresh_token": "refresh-secret",
+                    "id_token": "identity-secret",
+                    "private_key": "private-secret",
+                    "password_hash": "hash-secret",
+                    "secret_key": "secret-key-secret",
+                    "api_secret": "api-secret-value",
+                    "new_password": "new-password-secret",
+                    "session_token": "session-secret",
+                    "passphrase": "passphrase-secret",
+                    "database_password": "database-password-secret",
                     "client_secret": "also-secret",
-                    "items": [{"api_key": "private-key"}],
+                    "items": [{"api_key": "api-secret"}],
                 },
             },
         )
 
         assert "visible" in event.detail
-        assert "never-store-me" not in event.detail
-        assert "secret-token" not in event.detail
-        assert "also-secret" not in event.detail
-        assert "private-key" not in event.detail
-        assert event.detail.count("[REDACTED]") == 4
+        for secret in (
+            "never-store-me",
+            "secret-token",
+            "another-secret-token",
+            "access-secret",
+            "refresh-secret",
+            "identity-secret",
+            "private-secret",
+            "hash-secret",
+            "secret-key-secret",
+            "api-secret-value",
+            "new-password-secret",
+            "session-secret",
+            "passphrase-secret",
+            "database-password-secret",
+            "also-secret",
+            "api-secret",
+        ):
+            assert secret not in event.detail
+        assert event.detail.count("[REDACTED]") == 16
 
     def test_user_creation_rolls_back_when_audit_fails(
         self,

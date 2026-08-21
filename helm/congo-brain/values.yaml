@@ -50,7 +50,10 @@ ingress:
 env:
   DATABASE_URL: "postgresql+psycopg2://congo:congo_secret@postgres:5432/congo_brain"
   SECRET_KEY: "change-me-in-production"
-  KEYCLOAK_ENABLED: "false"
+  KEYCLOAK_ENABLED: "true"
+  KEYCLOAK_SERVER_URL: ""
+  KEYCLOAK_REALM: "congo-brain"
+  KEYCLOAK_CLIENT_ID: "congo-brain-api"
   ENVIRONMENT: "production"
 
 resources:

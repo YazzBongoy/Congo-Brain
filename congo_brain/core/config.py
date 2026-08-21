@@ -29,6 +29,12 @@ PUBLIC_REGISTRATION_ENABLED: bool = os.getenv(
 
 # Keycloak integration
 KEYCLOAK_ENABLED: bool = os.getenv("KEYCLOAK_ENABLED", "false").lower() == "true"
+if ENVIRONMENT in {"production", "staging"} and not KEYCLOAK_ENABLED:
+    print(
+        "FATAL: KEYCLOAK_ENABLED must be true in production and staging.",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 KEYCLOAK_SERVER_URL: str = os.getenv("KEYCLOAK_SERVER_URL", "http://localhost:8080")
 KEYCLOAK_REALM: str = os.getenv("KEYCLOAK_REALM", "congo-brain")
 KEYCLOAK_CLIENT_ID: str = os.getenv("KEYCLOAK_CLIENT_ID", "congo-brain-api")

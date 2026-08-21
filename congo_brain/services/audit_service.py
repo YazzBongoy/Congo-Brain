@@ -12,16 +12,43 @@ from congo_brain.models.audit import AuditEvent
 GENESIS_HASH = "0" * 64
 REDACTED = "[REDACTED]"
 SENSITIVE_DETAIL_KEYS = {
+    "accesstoken",
     "apikey",
+    "apitoken",
     "authorization",
+    "authorizationheader",
+    "bearertoken",
     "clientsecret",
     "credential",
     "credentials",
+    "idtoken",
     "password",
+    "passwordhash",
     "passwd",
+    "privatekey",
+    "refreshtoken",
     "secret",
     "token",
 }
+SENSITIVE_DETAIL_MARKERS = (
+    "apikey",
+    "authorization",
+    "credential",
+    "passphrase",
+    "passwd",
+    "password",
+    "privatekey",
+    "secret",
+    "token",
+)
+
+
+def _is_sensitive_detail_key(key: object) -> bool:
+    """Recognize credential-key families after separator/case normalization."""
+    normalized_key = "".join(character for character in str(key).casefold() if character.isalnum())
+    return normalized_key in SENSITIVE_DETAIL_KEYS or any(
+        marker in normalized_key for marker in SENSITIVE_DETAIL_MARKERS
+    )
 
 
 def _redact_detail(value: object) -> object:
@@ -29,8 +56,7 @@ def _redact_detail(value: object) -> object:
     if isinstance(value, dict):
         sanitized: dict[str, object] = {}
         for key, nested_value in value.items():
-            normalized_key = "".join(character for character in str(key).casefold() if character.isalnum())
-            sanitized[str(key)] = REDACTED if normalized_key in SENSITIVE_DETAIL_KEYS else _redact_detail(nested_value)
+            sanitized[str(key)] = REDACTED if _is_sensitive_detail_key(key) else _redact_detail(nested_value)
         return sanitized
     if isinstance(value, list):
         return [_redact_detail(item) for item in value]

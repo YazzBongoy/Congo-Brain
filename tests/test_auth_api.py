@@ -1,5 +1,6 @@
 """Tests for authentication and user management API endpoints."""
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -197,6 +198,84 @@ class TestUserManagement:
             f"/api/v1/auth/users/{actor.id}",
             headers=headers,
             json={"role": "admin"},
+        )
+
+        assert response.status_code == 403
+
+    def test_national_budget_admin_cannot_demote_platform_admin(
+        self,
+        client: TestClient,
+        auth_headers: dict,
+    ) -> None:
+        target = client.post(
+            "/api/v1/auth/users",
+            headers=auth_headers,
+            json={
+                "username": "platform-target",
+                "email": "platform-target@example.cd",
+                "password": "strong-pass",
+                "role": "admin",
+            },
+        )
+        assert target.status_code == 201
+        actor = client.post(
+            "/api/v1/auth/users",
+            headers=auth_headers,
+            json={
+                "username": "national-delegator",
+                "email": "national-delegator@example.cd",
+                "password": "strong-pass",
+                "role": "national_budget_admin",
+            },
+        )
+        assert actor.status_code == 201
+        login = client.post(
+            "/api/v1/auth/login",
+            json={"username": "national-delegator", "password": "strong-pass"},
+        )
+        headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+        response = client.patch(
+            f"/api/v1/auth/users/{target.json()['id']}",
+            headers=headers,
+            json={"role": "viewer"},
+        )
+
+        assert response.status_code == 403
+
+    @pytest.mark.parametrize("forbidden_role", ["analyst", "national_budget_admin"])
+    def test_national_budget_admin_cannot_delegate_roles_outside_its_authority(
+        self,
+        forbidden_role: str,
+        client: TestClient,
+        auth_headers: dict,
+    ) -> None:
+        actor = client.post(
+            "/api/v1/auth/users",
+            headers=auth_headers,
+            json={
+                "username": "limited-delegator",
+                "email": "limited-delegator@example.cd",
+                "password": "strong-pass",
+                "role": "national_budget_admin",
+            },
+        )
+        assert actor.status_code == 201
+        login = client.post(
+            "/api/v1/auth/login",
+            json={"username": "limited-delegator", "password": "strong-pass"},
+        )
+        headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+        response = client.post(
+            "/api/v1/auth/users",
+            headers=headers,
+            json={
+                "username": f"forbidden-{forbidden_role}",
+                "email": f"forbidden-{forbidden_role}@example.cd",
+                "password": "strong-pass",
+                "role": forbidden_role,
+            },
         )
 
         assert response.status_code == 403
