@@ -12,11 +12,11 @@ where:
     DWL = Deadweight Loss (corruption + inefficiency)
 """
 
-from congo_brain.services.economic.welfare_model import WelfareModel
-from congo_brain.services.economic.resource_optimizer import ResourceOptimizer
+from congo_brain.services.economic.corruption_calculator import CorruptionCalculator
 from congo_brain.services.economic.investment_allocator import InvestmentAllocator
 from congo_brain.services.economic.nwi import NationalWelfareIndex
-from congo_brain.services.economic.corruption_calculator import CorruptionCalculator
+from congo_brain.services.economic.resource_optimizer import ResourceOptimizer
+from congo_brain.services.economic.welfare_model import WelfareModel
 
 __all__ = [
     "WelfareModel",

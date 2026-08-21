@@ -6,8 +6,7 @@ Enhanced with trend tracking, province comparison, and escalation rules.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from congo_brain.models.security_alert import SecurityAlert
@@ -17,15 +16,16 @@ SEVERITY_WEIGHT = {"critical": 4, "high": 3, "medium": 2, "low": 1}
 
 # Escalation thresholds
 ESCALATION_THRESHOLDS = {
-    "critical": 5,   # 5+ critical alerts -> escalated
-    "high": 10,      # 10+ high alerts -> escalated
-    "medium": 20,    # 20+ medium alerts -> escalated
+    "critical": 5,  # 5+ critical alerts -> escalated
+    "high": 10,  # 10+ high alerts -> escalated
+    "medium": 20,  # 20+ medium alerts -> escalated
 }
 
 
 @dataclass
 class ProvinceRisk:
     """Detailed risk profile for a province."""
+
     province: str
     total_alerts: int = 0
     active_alerts: int = 0
@@ -40,6 +40,7 @@ class ProvinceRisk:
 @dataclass
 class RiskTrend:
     """Risk trend data point for time-series analysis."""
+
     period: str
     total_alerts: int
     risk_index: float
@@ -85,23 +86,23 @@ def analyze_risk_by_province(alerts: list["SecurityAlert"]) -> list[dict]:
             count = p.severity_breakdown.get(severity, 0)
             if count >= threshold:
                 p.is_escalated = True
-                p.escalation_reasons.append(
-                    f"{count} alertes {severity} (seuil: {threshold})"
-                )
+                p.escalation_reasons.append(f"{count} alertes {severity} (seuil: {threshold})")
 
-        result.append({
-            "province": p.province,
-            "total_alerts": p.total_alerts,
-            "active_alerts": p.active_alerts,
-            "resolved_alerts": p.resolved_alerts,
-            "risk_index": p.risk_index,
-            "severity_breakdown": p.severity_breakdown,
-            "is_escalated": p.is_escalated,
-            "escalation_reasons": p.escalation_reasons,
-            "latest_alert_date": p.latest_alert_date,
-        })
+        result.append(
+            {
+                "province": p.province,
+                "total_alerts": p.total_alerts,
+                "active_alerts": p.active_alerts,
+                "resolved_alerts": p.resolved_alerts,
+                "risk_index": p.risk_index,
+                "severity_breakdown": p.severity_breakdown,
+                "is_escalated": p.is_escalated,
+                "escalation_reasons": p.escalation_reasons,
+                "latest_alert_date": p.latest_alert_date,
+            }
+        )
 
-    result.sort(key=lambda x: x["risk_index"], reverse=True)
+    result.sort(key=lambda x: cast(float, x["risk_index"]), reverse=True)
     return result
 
 
@@ -132,10 +133,7 @@ def compute_risk_trends(alerts: list["SecurityAlert"], group_by: str = "month") 
     trends = []
     for period, period_alerts in sorted(periods.items()):
         total = len(period_alerts)
-        weighted_sum = sum(
-            a.risk_score * SEVERITY_WEIGHT.get(a.severity.lower(), 1)
-            for a in period_alerts
-        )
+        weighted_sum = sum(a.risk_score * SEVERITY_WEIGHT.get(a.severity.lower(), 1) for a in period_alerts)
         risk_index = round(weighted_sum / total, 1) if total else 0.0
 
         severity_breakdown: dict[str, int] = {}
@@ -143,12 +141,14 @@ def compute_risk_trends(alerts: list["SecurityAlert"], group_by: str = "month") 
             sev = a.severity.lower()
             severity_breakdown[sev] = severity_breakdown.get(sev, 0) + 1
 
-        trends.append({
-            "period": period,
-            "total_alerts": total,
-            "risk_index": risk_index,
-            "severity_breakdown": severity_breakdown,
-        })
+        trends.append(
+            {
+                "period": period,
+                "total_alerts": total,
+                "risk_index": risk_index,
+                "severity_breakdown": severity_breakdown,
+            }
+        )
 
     return trends
 

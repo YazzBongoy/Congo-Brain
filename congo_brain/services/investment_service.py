@@ -11,8 +11,10 @@ class InvestmentService:
         self.db = db
 
     def list_investments(
-        self, status: str | None = None,
-        province: str | None = None, sector: str | None = None,
+        self,
+        status: str | None = None,
+        province: str | None = None,
+        sector: str | None = None,
     ) -> list[Investment]:
         q = self.db.query(Investment)
         if status:
@@ -26,10 +28,13 @@ class InvestmentService:
     def get_investment(self, inv_id: int) -> Investment | None:
         return self.db.query(Investment).filter(Investment.id == inv_id).first()
 
-    def create_investment(self, **kwargs) -> Investment:  # type: ignore[no-untyped-def]
+    def create_investment(self, *, commit: bool = True, **kwargs) -> Investment:  # type: ignore[no-untyped-def]
         inv = Investment(**kwargs)
         self.db.add(inv)
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         self.db.refresh(inv)
         return inv
 
@@ -40,6 +45,7 @@ class InvestmentService:
     def compare_scenarios(self, budget_limits: list[float]) -> list[dict]:
         """Run optimization across multiple budget scenarios."""
         from congo_brain.services.ai.investment_optimizer import compare_scenarios
+
         investments = self.db.query(Investment).filter(Investment.status.in_(["planned", "in_progress"])).all()
         return compare_scenarios(investments, budget_limits)
 

@@ -53,6 +53,7 @@ class Severity(str, Enum):
 @dataclass
 class AnomalyResult:
     """Structured anomaly detection result."""
+
     transaction_id: int
     severity: Severity
     score: float
@@ -64,6 +65,7 @@ class AnomalyResult:
 @dataclass
 class DetectionSummary:
     """Summary of anomaly detection run."""
+
     total_transactions: int = 0
     anomalies_detected: int = 0
     anomaly_rate: float = 0.0
@@ -92,9 +94,7 @@ def _zscore_flags(transactions: list[Transaction], thresh: float) -> dict[int, l
         z = abs(t.amount - mean) / std
         if z > thresh:
             direction = "superieur" if t.amount > mean else "inferieur"
-            flags[t.id] = [
-                f"Z-score {z:.1f} ({direction} a la moyenne de {mean:,.0f} FC)"
-            ]
+            flags[t.id] = [f"Z-score {z:.1f} ({direction} a la moyenne de {mean:,.0f} FC)"]
     return flags
 
 
@@ -116,9 +116,7 @@ def _per_budget_zscore(transactions: list[Transaction], thresh: float) -> dict[i
         for t in txns:
             z = abs(t.amount - mean) / std
             if z > thresh:
-                flags.setdefault(t.id, []).append(
-                    f"Ecart intra-budget (z={z:.1f}, moyenne budget={mean:,.0f} FC)"
-                )
+                flags.setdefault(t.id, []).append(f"Ecart intra-budget (z={z:.1f}, moyenne budget={mean:,.0f} FC)")
     return flags
 
 
@@ -136,9 +134,7 @@ def _overbudget_flags(
             continue
         if budget.spent_amount > budget.allocated_amount:
             excess_pct = round(
-                (budget.spent_amount - budget.allocated_amount)
-                / budget.allocated_amount
-                * 100,
+                (budget.spent_amount - budget.allocated_amount) / budget.allocated_amount * 100,
                 1,
             )
             flags.setdefault(t.id, []).append(
@@ -180,9 +176,7 @@ def _round_number_flags(transactions: list[Transaction]) -> dict[int, list[str]]
             trailing += 1
             temp //= 10
         if trailing >= ROUND_NUMBER_DIGITS:
-            flags.setdefault(t.id, []).append(
-                f"Montant suspect: {trailing} zeros consecutifs ({t.amount:,.0f} FC)"
-            )
+            flags.setdefault(t.id, []).append(f"Montant suspect: {trailing} zeros consecutifs ({t.amount:,.0f} FC)")
     return flags
 
 
@@ -193,9 +187,7 @@ def _keyword_flags(transactions: list[Transaction]) -> dict[int, list[str]]:
         desc_lower = t.description.lower()
         matched = [kw for kw in SUSPICIOUS_KEYWORDS if kw in desc_lower]
         if matched:
-            flags.setdefault(t.id, []).append(
-                f"Mots-cles suspects dans la description: {', '.join(matched)}"
-            )
+            flags.setdefault(t.id, []).append(f"Mots-cles suspects dans la description: {', '.join(matched)}")
     return flags
 
 
@@ -286,8 +278,6 @@ def analyze_transaction_stream(
     summary.anomalies_detected = len(anomalies)
     summary.anomaly_rate = round(len(anomalies) / len(transactions) * 100, 1)
 
-    budget_map = {b.id: b for b in (budgets or [])}
-
     for t in anomalies:
         reasons = [r for r in (t.anomaly_reason or "").split(" | ") if r]
         severity = _classify_severity(t.anomaly_score, reasons)
@@ -366,7 +356,7 @@ def detect_anomalies(
         else:
             t.is_anomaly = False
             t.anomaly_score = 0.0
-            t.anomaly_reason = None
+            t.anomaly_reason = None  # type: ignore[assignment]
 
     # Sort by score descending
     anomalies.sort(key=lambda x: x.anomaly_score, reverse=True)

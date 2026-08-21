@@ -14,14 +14,14 @@ Pipeline: Collecte → Intelligence → Optimisation → Décision
 """
 
 from congo_brain.services.ia_gov.collectors import DataCollector
-from congo_brain.services.ia_gov.resource_optimizer import ResourceOptimizationEngine
 from congo_brain.services.ia_gov.consumer_surplus import ConsumerSurplusEngine
-from congo_brain.services.ia_gov.producer_surplus import ProducerSurplusEngine
-from congo_brain.services.ia_gov.national_resource import NationalResourceEngine
-from congo_brain.services.ia_gov.governance_score import GovernanceScoreEngine
 from congo_brain.services.ia_gov.corruption_detector import CorruptionDetectionEngine
-from congo_brain.services.ia_gov.digital_twin import NationalDigitalTwin
 from congo_brain.services.ia_gov.decision_ai import DecisionAI
+from congo_brain.services.ia_gov.digital_twin import NationalDigitalTwin
+from congo_brain.services.ia_gov.governance_score import GovernanceScoreEngine
+from congo_brain.services.ia_gov.national_resource import NationalResourceEngine
+from congo_brain.services.ia_gov.producer_surplus import ProducerSurplusEngine
+from congo_brain.services.ia_gov.resource_optimizer import ResourceOptimizationEngine
 
 __all__ = [
     "DataCollector",

@@ -43,4 +43,7 @@ class Transaction(Base):
     anomaly_reason: Mapped[str] = mapped_column(String(500), nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
-    budget: Mapped["Budget"] = relationship("Budget", back_populates="transactions")
+    budget: Mapped["Budget"] = relationship(
+        "congo_brain.models.budget.Budget",
+        back_populates="transactions",
+    )

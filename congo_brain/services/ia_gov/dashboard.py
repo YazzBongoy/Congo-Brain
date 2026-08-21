@@ -6,6 +6,8 @@ Assemble les résultats de:
 
 from __future__ import annotations
 
+from typing import cast
+
 from congo_brain.services.ia_gov.collectors import DataCollector
 from congo_brain.services.ia_gov.intelligence import IntelligenceEngine
 from congo_brain.services.ia_gov.optimizer import GovOptimizer
@@ -56,7 +58,10 @@ class GovDashboard:
             social_data=all_data["social"],
         )
 
-        total_benefit = sum(s.consumer_surplus + s.producer_surplus + s.government_revenue + s.natural_resource_value for s in analysis.sector_surpluses)
+        total_benefit = sum(
+            s.consumer_surplus + s.producer_surplus + s.government_revenue + s.natural_resource_value
+            for s in analysis.sector_surpluses
+        )
         total_cost = sum(s.deadweight_loss + s.environmental_cost for s in analysis.sector_surpluses)
 
         return {
@@ -108,7 +113,7 @@ class GovDashboard:
             social_data=all_data["social"],
         )
 
-        return analysis.alerts
+        return cast(list[dict], analysis.alerts)
 
     def get_recommendations(self) -> list[dict]:
         """Get optimization recommendations."""
@@ -121,7 +126,7 @@ class GovDashboard:
             social_data=all_data["social"],
         )
 
-        return analysis.recommendations
+        return cast(list[dict], analysis.recommendations)
 
     def get_historical(self, years: int = 5) -> list[dict]:
         """Get historical trends."""
@@ -132,7 +137,9 @@ class GovDashboard:
             "national_snn": round(analysis.national_snn, 2),
             "funded_decisions": len(optimization.decisions),
             "total_investment": round(optimization.total_cost, 2),
-            "snn_per_dollar": round(analysis.national_snn / optimization.total_cost, 4) if optimization.total_cost > 0 else 0,
+            "snn_per_dollar": round(analysis.national_snn / optimization.total_cost, 4)
+            if optimization.total_cost > 0
+            else 0,
             "alerts": len(analysis.alerts),
             "critical_alerts": len([a for a in analysis.alerts if a["level"] == "critique"]),
             "top_sector": analysis.sector_surpluses[0].sector if analysis.sector_surpluses else "N/A",

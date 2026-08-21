@@ -13,8 +13,10 @@ class SecurityService:
         self.db = db
 
     def list_alerts(
-        self, province: str | None = None,
-        severity: str | None = None, active_only: bool = False,
+        self,
+        province: str | None = None,
+        severity: str | None = None,
+        active_only: bool = False,
     ) -> list[SecurityAlert]:
         q = self.db.query(SecurityAlert)
         if province:
@@ -28,19 +30,25 @@ class SecurityService:
     def get_alert(self, alert_id: int) -> SecurityAlert | None:
         return self.db.query(SecurityAlert).filter(SecurityAlert.id == alert_id).first()
 
-    def create_alert(self, **kwargs) -> SecurityAlert:  # type: ignore[no-untyped-def]
+    def create_alert(self, *, commit: bool = True, **kwargs) -> SecurityAlert:  # type: ignore[no-untyped-def]
         alert = SecurityAlert(**kwargs)
         self.db.add(alert)
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         self.db.refresh(alert)
         return alert
 
-    def resolve_alert(self, alert_id: int) -> SecurityAlert | None:
+    def resolve_alert(self, alert_id: int, *, commit: bool = True) -> SecurityAlert | None:
         alert = self.db.query(SecurityAlert).filter(SecurityAlert.id == alert_id).first()
         if alert:
             alert.is_resolved = True
             alert.resolved_at = datetime.now(timezone.utc)
-            self.db.commit()
+            if commit:
+                self.db.commit()
+            else:
+                self.db.flush()
             self.db.refresh(alert)
         return alert
 

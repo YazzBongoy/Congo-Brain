@@ -36,9 +36,13 @@ def list_investments(
         table.add_column("Statut", style="white")
         for inv in investments:
             table.add_row(
-                str(inv.id), inv.project_name, inv.province,
-                inv.sector, f"{inv.total_budget:,.0f}",
-                f"{inv.roi_score}%", inv.status,
+                str(inv.id),
+                inv.project_name,
+                inv.province,
+                inv.sector,
+                f"{inv.total_budget:,.0f}",
+                f"{inv.roi_score}%",
+                inv.status,
             )
         console.print(table)
     finally:

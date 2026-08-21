@@ -26,6 +26,9 @@ def get_db() -> Session:  # type: ignore[misc]
     db = SessionLocal()
     try:
         yield db  # type: ignore[misc]
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
@@ -33,6 +36,7 @@ def get_db() -> Session:  # type: ignore[misc]
 def init_db() -> None:
     """Create all tables."""
     import congo_brain.models  # noqa: F401 – ensure models are registered
+
     Base.metadata.create_all(bind=engine)
 
 

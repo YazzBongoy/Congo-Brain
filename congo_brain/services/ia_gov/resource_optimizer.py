@@ -10,10 +10,11 @@ Solveur: LP/GLPK via scipy (fallback greedy)
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 try:
-    from scipy.optimize import milp, Bounds, LinearConstraint
+    from scipy.optimize import Bounds, LinearConstraint, milp
+
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
@@ -22,6 +23,7 @@ except ImportError:
 @dataclass
 class OptimizationConstraint:
     """Contrainte d'optimisation."""
+
     name: str
     value: float
     ceiling: float
@@ -49,6 +51,7 @@ class OptimizationConstraint:
 @dataclass
 class OptimizationObjective:
     """Objectif d'optimisation par secteur."""
+
     sector: str
     cs: float = 0.0
     ps: float = 0.0
@@ -187,7 +190,9 @@ class ResourceOptimizationEngine:
             "method": "greedy",
             "budget": self.budget,
             "total_welfare": round(self.total_welfare, 2),
-            "allocation": {s.sector: round(s.welfare / self.total_welfare, 4) if self.total_welfare > 0 else 0 for s in scored},
+            "allocation": {
+                s.sector: round(s.welfare / self.total_welfare, 4) if self.total_welfare > 0 else 0 for s in scored
+            },
             "constraints": {k: v.to_dict() for k, v in self.constraints.items()},
             "feasible": self.constraints_feasible,
         }

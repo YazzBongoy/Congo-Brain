@@ -32,7 +32,8 @@ def list_procedures(
         table.add_column("Frais", style="magenta")
         for p in procs:
             table.add_row(
-                p.get("code", ""), p.get("name", ""),
+                p.get("code", ""),
+                p.get("name", ""),
                 p.get("category", ""),
                 p.get("processing_time", ""),
                 p.get("fees", ""),
@@ -63,8 +64,10 @@ def list_contacts() -> None:
         table.add_column("Email", style="blue")
         for c in contacts:
             table.add_row(
-                c.get("code", ""), c.get("institution", ""),
-                c.get("address", ""), c.get("phone", ""),
+                c.get("code", ""),
+                c.get("institution", ""),
+                c.get("address", ""),
+                c.get("phone", ""),
                 c.get("email", ""),
             )
         console.print(table)
@@ -113,11 +116,13 @@ def list_faq() -> None:
             console.print("[yellow]Aucune FAQ trouvee.[/]")
             return
         for item in items:
-            console.print(Panel(
-                f"[bold]{item.get('question', '')}[/]\n\n{item.get('answer', '')}",
-                title=f"FAQ - {item.get('category', '')}",
-                border_style="cyan",
-            ))
+            console.print(
+                Panel(
+                    f"[bold]{item.get('question', '')}[/]\n\n{item.get('answer', '')}",
+                    title=f"FAQ - {item.get('category', '')}",
+                    border_style="cyan",
+                )
+            )
     finally:
         db.close()
 

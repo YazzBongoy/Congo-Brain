@@ -39,6 +39,8 @@ htmlcov/
 
 # Virtual environments
 .venv/
+node_modules/
+frontend/dist/
 
 # Alembic
 alembic/versions/*.pyc

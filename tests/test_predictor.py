@@ -2,10 +2,13 @@
 
 import pytest
 
-from congo_brain.services.ia_gov.snn_engine import SNNOptimizationEngine
 from congo_brain.services.ia_gov.predictor import (
-    PredictiveModel, Scenario, SCENARIOS, PredictionResult, YearProjection,
+    SCENARIOS,
+    PredictiveModel,
+    Scenario,
+    YearProjection,
 )
+from congo_brain.services.ia_gov.snn_engine import SNNOptimizationEngine
 
 
 class TestScenario:
@@ -132,6 +135,10 @@ class TestPredictiveModel:
 
 
 class TestGEOSPredictiveAPI:
+    @pytest.fixture(autouse=True)
+    def _authenticate(self, client, auth_headers):
+        client.headers.update(auth_headers)
+
     def test_list_scenarios(self, client):
         r = client.get("/api/v1/geos/predictions/scenarios")
         assert r.status_code == 200

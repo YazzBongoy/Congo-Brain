@@ -7,6 +7,7 @@ from congo_brain.core.database import get_db
 from congo_brain.core.rbac import Permission
 from congo_brain.core.security import require_permission
 from congo_brain.schemas.security import SecurityAlertCreate, SecurityAlertOut
+from congo_brain.services.audit_service import record_audit_event
 from congo_brain.services.security_service import SecurityService
 
 router = APIRouter(prefix="/security", tags=["PeaceNet"])
@@ -59,10 +60,19 @@ def compare_provinces(
 @router.post("/alerts", response_model=SecurityAlertOut, status_code=201)
 def create_alert(
     body: SecurityAlertCreate,
+    db: Session = Depends(get_db),
     svc: SecurityService = Depends(_svc),
-    _user: dict = Depends(require_permission(Permission.SECURITY_WRITE)),
+    current_user: dict = Depends(require_permission(Permission.SECURITY_WRITE)),
 ) -> SecurityAlertOut:
-    alert = svc.create_alert(**body.model_dump())
+    alert = svc.create_alert(commit=False, **body.model_dump())
+    record_audit_event(
+        db,
+        current_user,
+        "security_alert.created",
+        "security_alert",
+        alert.id,
+        detail={"province": alert.province, "severity": alert.severity},
+    )
     return SecurityAlertOut.model_validate(alert)
 
 
@@ -81,10 +91,19 @@ def get_alert(
 @router.post("/alerts/{alert_id}/resolve", response_model=SecurityAlertOut)
 def resolve_alert(
     alert_id: int,
+    db: Session = Depends(get_db),
     svc: SecurityService = Depends(_svc),
-    _user: dict = Depends(require_permission(Permission.SECURITY_RESOLVE)),
+    current_user: dict = Depends(require_permission(Permission.SECURITY_RESOLVE)),
 ) -> SecurityAlertOut:
-    alert = svc.resolve_alert(alert_id)
+    alert = svc.resolve_alert(alert_id, commit=False)
     if not alert:
         raise HTTPException(status_code=404, detail="Security alert not found")
+    record_audit_event(
+        db,
+        current_user,
+        "security_alert.resolved",
+        "security_alert",
+        alert.id,
+        detail={"province": alert.province, "severity": alert.severity},
+    )
     return SecurityAlertOut.model_validate(alert)

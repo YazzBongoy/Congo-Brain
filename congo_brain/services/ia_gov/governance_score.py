@@ -6,34 +6,37 @@ Score = 40% Optimisation + 20% Transparence + 20% Performance + 20% Satisfaction
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 
 @dataclass
 class MinistryScore:
     """Score de gouvernance pour un ministère."""
+
     name: str
-    optimization: float = 0.0     # Efficacité allocation (0-100)
-    transparency: float = 0.0     # Transparence (0-100)
-    performance: float = 0.0      # Performance budgétaire (0-100)
-    satisfaction: float = 0.0     # Satisfaction citoyens (0-100)
+    optimization: float = 0.0  # Efficacité allocation (0-100)
+    transparency: float = 0.0  # Transparence (0-100)
+    performance: float = 0.0  # Performance budgétaire (0-100)
+    satisfaction: float = 0.0  # Satisfaction citoyens (0-100)
 
     @property
     def governance_score(self) -> float:
         """Score pondéré."""
         return round(
-            0.40 * self.optimization
-            + 0.20 * self.transparency
-            + 0.20 * self.performance
-            + 0.20 * self.satisfaction, 1
+            0.40 * self.optimization + 0.20 * self.transparency + 0.20 * self.performance + 0.20 * self.satisfaction, 1
         )
 
     @property
     def rating(self) -> str:
         score = self.governance_score
-        if score >= 80: return "Excellent"
-        if score >= 65: return "Bon"
-        if score >= 50: return "Moyen"
-        if score >= 35: return "Faible"
+        if score >= 80:
+            return "Excellent"
+        if score >= 65:
+            return "Bon"
+        if score >= 50:
+            return "Moyen"
+        if score >= 35:
+            return "Faible"
         return "Critique"
 
     def to_dict(self) -> dict:
@@ -91,8 +94,9 @@ class GovernanceScoreEngine:
         return round(self.average_score, 1)
 
     def get_ranking(self) -> list[dict]:
-        return sorted([m.to_dict() for m in self.ministries.values()],
-                      key=lambda x: x["governance_score"], reverse=True)
+        return sorted(
+            [m.to_dict() for m in self.ministries.values()], key=lambda x: x["governance_score"], reverse=True
+        )
 
     def get_improvement_targets(self) -> list[dict]:
         """Cibles d'amélioration pour chaque ministère."""
@@ -105,15 +109,17 @@ class GovernanceScoreEngine:
                 ("satisfaction", m.satisfaction),
                 key=lambda x: x[1],
             )
-            targets.append({
-                "ministry": m.name,
-                "current_score": m.governance_score,
-                "weakest_dimension": weakest[0],
-                "weakest_value": weakest[1],
-                "target_value": min(100, weakest[1] + 20),
-                "potential_score_gain": round((min(100, weakest[1] + 20) - weakest[1]) * 0.2, 1),
-            })
-        targets.sort(key=lambda x: x["potential_score_gain"], reverse=True)
+            targets.append(
+                {
+                    "ministry": m.name,
+                    "current_score": m.governance_score,
+                    "weakest_dimension": weakest[0],
+                    "weakest_value": weakest[1],
+                    "target_value": min(100, weakest[1] + 20),
+                    "potential_score_gain": round((min(100, weakest[1] + 20) - weakest[1]) * 0.2, 1),
+                }
+            )
+        targets.sort(key=lambda x: cast(float, x["potential_score_gain"]), reverse=True)
         return targets
 
     def get_dashboard(self) -> dict:

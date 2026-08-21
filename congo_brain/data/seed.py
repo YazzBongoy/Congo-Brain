@@ -1431,5 +1431,5 @@ def _seed_citizen_data(db: Session) -> None:
             category="Developpement",
         ),
     ]
-    db.add_all(procedures + contacts + rights + faqs)
+    db.add_all([*procedures, *contacts, *rights, *faqs])
     db.flush()

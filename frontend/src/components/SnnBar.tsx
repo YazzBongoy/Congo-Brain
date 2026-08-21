@@ -44,7 +44,7 @@ export default function SnnBar({ snn }: Props) {
       },
       y: {
         grid: { color: '#1e293b' },
-        ticks: { color: '#94a3b8', callback: (v: number) => `${v} M` },
+        ticks: { color: '#94a3b8', callback: (v: string | number) => `${v} M` },
       },
     },
   }

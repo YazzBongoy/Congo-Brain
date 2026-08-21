@@ -6,7 +6,11 @@ import time
 
 from fastapi import APIRouter, Request
 from prometheus_client import (
-    Counter, Gauge, Histogram, generate_latest, CONTENT_TYPE_LATEST,
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
 )
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
@@ -44,6 +48,7 @@ ERROR_COUNT = Counter(
 
 
 # ── Middleware ──────────────────────────────────────────────────
+
 
 class PrometheusMiddleware(BaseHTTPMiddleware):
     """Collects request count, latency, errors."""

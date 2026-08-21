@@ -2,8 +2,12 @@
 
 import pytest
 
+from congo_brain.services.ia_gov.reports import generate_snn_excel, generate_snn_pdf
 from congo_brain.services.ia_gov.snn_engine import SNNOptimizationEngine
-from congo_brain.services.ia_gov.reports import generate_snn_pdf, generate_snn_excel
+
+
+def test_report_exports_require_authentication(client):
+    assert client.get("/api/v1/geos/reports/snn.pdf").status_code == 401
 
 
 class TestPDFReport:
@@ -18,7 +22,8 @@ class TestPDFReport:
     def test_generate_pdf_with_predictions(self):
         engine = SNNOptimizationEngine()
         engine.load_drc_baseline()
-        from congo_brain.services.ia_gov.predictor import PredictiveModel, SCENARIOS
+        from congo_brain.services.ia_gov.predictor import SCENARIOS, PredictiveModel
+
         m = PredictiveModel()
         m.load_from_snn_engine(engine)
         preds = m.project(SCENARIOS["baseline"], years=5).to_dict()
@@ -46,7 +51,8 @@ class TestExcelReport:
     def test_generate_excel_with_predictions(self):
         engine = SNNOptimizationEngine()
         engine.load_drc_baseline()
-        from congo_brain.services.ia_gov.predictor import PredictiveModel, SCENARIOS
+        from congo_brain.services.ia_gov.predictor import SCENARIOS, PredictiveModel
+
         m = PredictiveModel()
         m.load_from_snn_engine(engine)
         preds = m.project(SCENARIOS["optimiste"], years=5).to_dict()
@@ -62,6 +68,10 @@ class TestExcelReport:
 
 
 class TestReportAPI:
+    @pytest.fixture(autouse=True)
+    def _authenticate(self, client, auth_headers):
+        client.headers.update(auth_headers)
+
     def test_download_pdf(self, client):
         r = client.get("/api/v1/geos/reports/snn.pdf")
         assert r.status_code == 200

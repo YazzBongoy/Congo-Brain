@@ -23,21 +23,32 @@ class BudgetService:
         return self.db.query(Budget).filter(Budget.id == budget_id).first()
 
     def create_budget(
-        self, ministry: str, sector: str, allocated_amount: float,
-        fiscal_year: int, spent_amount: float = 0.0,
+        self,
+        ministry: str,
+        sector: str,
+        allocated_amount: float,
+        fiscal_year: int,
+        spent_amount: float = 0.0,
+        *,
+        commit: bool = True,
     ) -> Budget:
         b = Budget(
-            ministry=ministry, sector=sector,
+            ministry=ministry,
+            sector=sector,
             allocated_amount=allocated_amount,
-            spent_amount=spent_amount, fiscal_year=fiscal_year,
+            spent_amount=spent_amount,
+            fiscal_year=fiscal_year,
         )
         self.db.add(b)
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
         self.db.refresh(b)
         return b
 
-    def get_status(self) -> dict:
-        budgets = self.db.query(Budget).all()
+    def get_status(self, ministry: str | None = None) -> dict:
+        budgets = self.list_budgets(ministry)
         total_alloc = sum(b.allocated_amount for b in budgets)
         total_spent = sum(b.spent_amount for b in budgets)
         by_ministry: dict[str, dict] = {}
@@ -65,9 +76,15 @@ class BudgetService:
         return q.all()
 
     def create_transaction(
-        self, budget_id: int, amount: float, description: str,
-        transaction_type: str, reference_number: str,
+        self,
+        budget_id: int,
+        amount: float,
+        description: str,
+        transaction_type: str,
+        reference_number: str,
         beneficiary: str | None = None,
+        *,
+        commit: bool = True,
     ) -> Transaction:
         t = Transaction(
             budget_id=budget_id,
@@ -78,26 +95,38 @@ class BudgetService:
             reference_number=reference_number,
         )
         self.db.add(t)
-        self.db.commit()
-        self.db.refresh(t)
+        self.db.flush()
 
         budget = self.db.query(Budget).filter(Budget.id == budget_id).first()
         if budget:
             budget.spent_amount += amount
+        if commit:
             self.db.commit()
+        else:
+            self.db.flush()
+        self.db.refresh(t)
         return t
 
-    def run_anomaly_detection(self) -> dict:
-        transactions = self.db.query(Transaction).all()
+    def run_anomaly_detection(self, ministry: str | None = None, *, commit: bool = True) -> dict:
+        transaction_query = self.db.query(Transaction).join(Budget)
+        if ministry:
+            transaction_query = transaction_query.filter(Budget.ministry == ministry)
+        transactions = transaction_query.all()
         if not transactions:
             return {
-                "total_transactions": 0, "anomalies_detected": 0,
-                "anomaly_rate": 0.0, "anomalies": [], "rules_applied": [],
+                "total_transactions": 0,
+                "anomalies_detected": 0,
+                "anomaly_rate": 0.0,
+                "anomalies": [],
+                "rules_applied": [],
             }
 
-        budgets = self.db.query(Budget).all()
+        budgets = self.list_budgets(ministry)
         anomalies = detect_anomalies(transactions, budgets=budgets)
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
 
         rules_applied = [
             "z-score (ecart statistique global)",
@@ -117,11 +146,20 @@ class BudgetService:
             "anomalies": anomalies,
         }
 
-    def run_anomaly_detection_enhanced(self, threshold: float = 2.0) -> dict:
+    def run_anomaly_detection_enhanced(
+        self,
+        threshold: float = 2.0,
+        ministry: str | None = None,
+        *,
+        commit: bool = True,
+    ) -> dict:
         """Run anomaly detection with severity classification and summary."""
         from congo_brain.services.ai.anomaly_detector import analyze_transaction_stream
 
-        transactions = self.db.query(Transaction).all()
+        transaction_query = self.db.query(Transaction).join(Budget)
+        if ministry:
+            transaction_query = transaction_query.filter(Budget.ministry == ministry)
+        transactions = transaction_query.all()
         if not transactions:
             return {
                 "total_transactions": 0,
@@ -132,11 +170,16 @@ class BudgetService:
                 "rules_applied": [],
             }
 
-        budgets = self.db.query(Budget).all()
+        budgets = self.list_budgets(ministry)
         summary = analyze_transaction_stream(
-            transactions, budgets=budgets, threshold=threshold,
+            transactions,
+            budgets=budgets,
+            threshold=threshold,
         )
-        self.db.commit()
+        if commit:
+            self.db.commit()
+        else:
+            self.db.flush()
 
         return {
             "total_transactions": summary.total_transactions,
@@ -156,26 +199,27 @@ class BudgetService:
             "rules_applied": summary.rules_applied,
         }
 
-    def get_ministry_summary(self) -> list[dict]:
-        rows = (
-            self.db.query(
+    def get_ministry_summary(self, ministry: str | None = None) -> list[dict]:
+        query = self.db.query(
                 Budget.ministry,
                 func.sum(Budget.allocated_amount).label("allocated"),
                 func.sum(Budget.spent_amount).label("spent"),
                 func.count(Budget.id).label("count"),
             )
-            .group_by(Budget.ministry)
-            .all()
-        )
+        if ministry:
+            query = query.filter(Budget.ministry == ministry)
+        rows = query.group_by(Budget.ministry).all()
         result = []
         for r in rows:
             alloc = float(r.allocated or 0)
             spent = float(r.spent or 0)
-            result.append({
-                "ministry": r.ministry,
-                "allocated": alloc,
-                "spent": spent,
-                "count": r.count,
-                "execution_rate": round(spent / alloc * 100, 1) if alloc else 0.0,
-            })
+            result.append(
+                {
+                    "ministry": r.ministry,
+                    "allocated": alloc,
+                    "spent": spent,
+                    "count": r.count,
+                    "execution_rate": round(spent / alloc * 100, 1) if alloc else 0.0,
+                }
+            )
         return result

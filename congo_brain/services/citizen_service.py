@@ -70,9 +70,7 @@ class CitizenService:
         return [self._faq_to_dict(f) for f in self.db.query(FAQ).all()]
 
     def search_faq(self, query: str) -> list[dict]:
-        q = self.db.query(FAQ).filter(
-            FAQ.question.ilike(f"%{query}%") | FAQ.answer.ilike(f"%{query}%")
-        )
+        q = self.db.query(FAQ).filter(FAQ.question.ilike(f"%{query}%") | FAQ.answer.ilike(f"%{query}%"))
         return [self._faq_to_dict(f) for f in q.all()]
 
     # -- Categories & Stats --

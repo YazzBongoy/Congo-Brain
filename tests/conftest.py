@@ -10,9 +10,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 os.environ["DATABASE_URL"] = "sqlite:///test_congo_brain.db"
 os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
+os.environ["ENVIRONMENT"] = "development"
+os.environ["PUBLIC_REGISTRATION_ENABLED"] = "true"
+os.environ["KEYCLOAK_ENABLED"] = "false"
 
-from congo_brain.core.database import Base, get_db  # noqa: E402
 from congo_brain.api.server import app  # noqa: E402
+from congo_brain.core.database import Base, get_db  # noqa: E402
+from congo_brain.models.user import User  # noqa: E402
 
 TEST_DATABASE_URL = "sqlite:///test_congo_brain.db"
 engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
@@ -47,18 +51,26 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture()
-def auth_headers(client: TestClient) -> dict:
+def auth_headers(client: TestClient, db_session: Session) -> dict:
     """Register a test user and return auth headers."""
-    client.post("/api/v1/auth/register", json={
-        "username": "testadmin",
-        "email": "admin@test.com",
-        "password": "admin123",
-        "role": "admin",
-    })
-    resp = client.post("/api/v1/auth/login", json={
-        "username": "testadmin",
-        "password": "admin123",
-    })
+    client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "testadmin",
+            "email": "admin@test.com",
+            "password": "admin123",
+        },
+    )
+    user = db_session.query(User).filter(User.username == "testadmin").one()
+    user.role = "admin"
+    db_session.commit()
+    resp = client.post(
+        "/api/v1/auth/login",
+        json={
+            "username": "testadmin",
+            "password": "admin123",
+        },
+    )
     token = resp.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
@@ -66,32 +78,45 @@ def auth_headers(client: TestClient) -> dict:
 @pytest.fixture()
 def viewer_headers(client: TestClient) -> dict:
     """Register a viewer user and return auth headers."""
-    client.post("/api/v1/auth/register", json={
-        "username": "testviewer",
-        "email": "viewer@test.com",
-        "password": "viewer123",
-        "role": "viewer",
-    })
-    resp = client.post("/api/v1/auth/login", json={
-        "username": "testviewer",
-        "password": "viewer123",
-    })
+    client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "testviewer",
+            "email": "viewer@test.com",
+            "password": "viewer123",
+        },
+    )
+    resp = client.post(
+        "/api/v1/auth/login",
+        json={
+            "username": "testviewer",
+            "password": "viewer123",
+        },
+    )
     token = resp.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture()
-def analyst_headers(client: TestClient) -> dict:
+def analyst_headers(client: TestClient, db_session: Session) -> dict:
     """Register an analyst user and return auth headers."""
-    client.post("/api/v1/auth/register", json={
-        "username": "testanalyst",
-        "email": "analyst@test.com",
-        "password": "analyst123",
-        "role": "analyst",
-    })
-    resp = client.post("/api/v1/auth/login", json={
-        "username": "testanalyst",
-        "password": "analyst123",
-    })
+    client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "testanalyst",
+            "email": "analyst@test.com",
+            "password": "analyst123",
+        },
+    )
+    user = db_session.query(User).filter(User.username == "testanalyst").one()
+    user.role = "analyst"
+    db_session.commit()
+    resp = client.post(
+        "/api/v1/auth/login",
+        json={
+            "username": "testanalyst",
+            "password": "analyst123",
+        },
+    )
     token = resp.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}

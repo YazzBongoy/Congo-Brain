@@ -15,13 +15,18 @@ uvicorn = {version = ">=0.27.0", extras = ["standard"]}
 pydantic = ">=2.0.0"
 pydantic-settings = ">=2.0.0"
 sqlalchemy = ">=2.0.0"
-python-jose = {version = ">=3.3.0", extras = ["cryptography"]}
+PyJWT = {version = ">=2.10.0", extras = ["crypto"]}
 bcrypt = ">=4.0.0"
 alembic = ">=1.13.0"
 psycopg2-binary = ">=2.9.9"
 slowapi = ">=0.1.9"
 email-validator = ">=2.0.0"
 scipy = ">=1.11.0"
+requests = ">=2.31.0"
+prometheus-client = ">=0.20.0"
+fpdf2 = ">=2.8.0"
+openpyxl = ">=3.1.0"
+strawberry-graphql = {version = ">=0.227.0", extras = ["fastapi"]}
 
 [tool.poetry.scripts]
 congo-brain = "congo_brain.cli.app:app"
@@ -47,6 +52,10 @@ select = ["E", "F", "I", "W"]
 python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = "congo_brain.models.geos.entities"
+disable_error_code = ["return-value", "no-any-return"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

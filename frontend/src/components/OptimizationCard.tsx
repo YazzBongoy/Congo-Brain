@@ -2,7 +2,6 @@ interface Props {
   optimization: {
     budget: number
     total_snn: number
-    remaining: number
     allocations: Record<string, { fraction: number; snn: number }>
   }
 }

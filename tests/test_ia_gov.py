@@ -10,19 +10,18 @@
 8. Decision AI
 """
 
-import pytest
 from congo_brain.services.ia_gov.collectors import DataCollector
-from congo_brain.services.ia_gov.resource_optimizer import ResourceOptimizationEngine, OptimizationObjective, OptimizationConstraint
 from congo_brain.services.ia_gov.consumer_surplus import ConsumerSurplusEngine, PublicService
-from congo_brain.services.ia_gov.producer_surplus import ProducerSurplusEngine, Enterprise
-from congo_brain.services.ia_gov.national_resource import NationalResourceEngine, Mine
-from congo_brain.services.ia_gov.governance_score import GovernanceScoreEngine, MinistryScore
-from congo_brain.services.ia_gov.corruption_detector import CorruptionDetectionEngine, Anomaly
-from congo_brain.services.ia_gov.digital_twin import NationalDigitalTwin, ProvinceTwin
+from congo_brain.services.ia_gov.corruption_detector import CorruptionDetectionEngine
 from congo_brain.services.ia_gov.decision_ai import DecisionAI
-
+from congo_brain.services.ia_gov.digital_twin import NationalDigitalTwin, ProvinceTwin
+from congo_brain.services.ia_gov.governance_score import GovernanceScoreEngine, MinistryScore
+from congo_brain.services.ia_gov.national_resource import Mine, NationalResourceEngine
+from congo_brain.services.ia_gov.producer_surplus import Enterprise, ProducerSurplusEngine
+from congo_brain.services.ia_gov.resource_optimizer import ResourceOptimizationEngine
 
 # ── Module 1: Resource Optimization Engine ─────────────────────
+
 
 class TestResourceOptimizationEngine:
     def test_load_baseline(self):
@@ -66,6 +65,7 @@ class TestResourceOptimizationEngine:
 
 # ── Module 2: Consumer Surplus Engine ──────────────────────────
 
+
 class TestConsumerSurplusEngine:
     def test_load_baseline(self):
         e = ConsumerSurplusEngine()
@@ -73,8 +73,9 @@ class TestConsumerSurplusEngine:
         assert len(e.services) > 0
 
     def test_cs_calculation(self):
-        s = PublicService("Test", willingness_to_pay=20, actual_price=10,
-                          quality_score=7, access_time_hours=2, indirect_cost=3)
+        s = PublicService(
+            "Test", willingness_to_pay=20, actual_price=10, quality_score=7, access_time_hours=2, indirect_cost=3
+        )
         assert s.consumer_surplus == 7  # 20 - 10 - 3
         assert s.effective_cs > 0
 
@@ -107,6 +108,7 @@ class TestConsumerSurplusEngine:
 
 # ── Module 3: Producer Surplus Engine ──────────────────────────
 
+
 class TestProducerSurplusEngine:
     def test_load_baseline(self):
         e = ProducerSurplusEngine()
@@ -114,9 +116,18 @@ class TestProducerSurplusEngine:
         assert len(e.enterprises) > 0
 
     def test_ps_calculation(self):
-        ent = Enterprise("Test", "Industrie", revenue=100, production_cost=40,
-                         tax_burden=20, admin_cost=5, corruption_cost=5,
-                         logistics_cost=10, energy_cost=10, employees=50)
+        ent = Enterprise(
+            "Test",
+            "Industrie",
+            revenue=100,
+            production_cost=40,
+            tax_burden=20,
+            admin_cost=5,
+            corruption_cost=5,
+            logistics_cost=10,
+            energy_cost=10,
+            employees=50,
+        )
         assert ent.producer_surplus == 10  # 100 - 90
         assert ent.ps_margin == 10.0
 
@@ -147,6 +158,7 @@ class TestProducerSurplusEngine:
 
 # ── Module 4: National Resource Engine ─────────────────────────
 
+
 class TestNationalResourceEngine:
     def test_load_baseline(self):
         e = NationalResourceEngine()
@@ -154,9 +166,16 @@ class TestNationalResourceEngine:
         assert len(e.mines) > 0
 
     def test_mine_calculations(self):
-        m = Mine("Test", "Haut-Katanga", "Cuivre",
-                 annual_production_tons=100_000, market_value_per_ton=8000,
-                 local_processing_pct=10, tax_rate=35, employees=500)
+        m = Mine(
+            "Test",
+            "Haut-Katanga",
+            "Cuivre",
+            annual_production_tons=100_000,
+            market_value_per_ton=8000,
+            local_processing_pct=10,
+            tax_rate=35,
+            employees=500,
+        )
         assert m.gross_value == 800  # 100k * 8k / 1M
         assert m.value_added > m.gross_value
         assert m.capture_rate > 0
@@ -177,10 +196,13 @@ class TestNationalResourceEngine:
     def test_compare_scenarios(self):
         e = NationalResourceEngine()
         e.load_baseline()
-        scenarios = e.compare_scenarios("Kamoa-Kakula", [
-            {"name": "Export brut", "local_processing_pct": 0},
-            {"name": "Transformation locale", "local_processing_pct": 50},
-        ])
+        scenarios = e.compare_scenarios(
+            "Kamoa-Kakula",
+            [
+                {"name": "Export brut", "local_processing_pct": 0},
+                {"name": "Transformation locale", "local_processing_pct": 50},
+            ],
+        )
         assert len(scenarios) == 2
         assert scenarios[1]["value_added"] > scenarios[0]["value_added"]
 
@@ -194,6 +216,7 @@ class TestNationalResourceEngine:
 
 # ── Module 5: Governance Score ─────────────────────────────────
 
+
 class TestGovernanceScoreEngine:
     def test_load_baseline(self):
         e = GovernanceScoreEngine()
@@ -201,8 +224,7 @@ class TestGovernanceScoreEngine:
         assert len(e.ministries) > 0
 
     def test_score_calculation(self):
-        m = MinistryScore("Test", optimization=80, transparency=60,
-                          performance=70, satisfaction=50)
+        m = MinistryScore("Test", optimization=80, transparency=60, performance=70, satisfaction=50)
         # 0.4*80 + 0.2*60 + 0.2*70 + 0.2*50 = 32+12+14+10 = 68
         assert m.governance_score == 68.0
         assert m.rating == "Bon"
@@ -234,6 +256,7 @@ class TestGovernanceScoreEngine:
 
 
 # ── Module 6: Corruption Detector ─────────────────────────────
+
 
 class TestCorruptionDetectionEngine:
     def test_load_baseline(self):
@@ -274,6 +297,7 @@ class TestCorruptionDetectionEngine:
 
 # ── Module 7: National Digital Twin ───────────────────────────
 
+
 class TestNationalDigitalTwin:
     def test_load_baseline(self):
         t = NationalDigitalTwin()
@@ -281,10 +305,21 @@ class TestNationalDigitalTwin:
         assert len(t.provinces) > 0
 
     def test_province_calculations(self):
-        p = ProvinceTwin("Test", population=5.0, gdp=2000, budget=300,
-                         electricity_access=30, water_access=40, internet_access=15,
-                         health_facilities=50, schools=300, poverty_rate=60,
-                         literacy_rate=70, security_index=50, governance_score=40)
+        p = ProvinceTwin(
+            "Test",
+            population=5.0,
+            gdp=2000,
+            budget=300,
+            electricity_access=30,
+            water_access=40,
+            internet_access=15,
+            health_facilities=50,
+            schools=300,
+            poverty_rate=60,
+            literacy_rate=70,
+            security_index=50,
+            governance_score=40,
+        )
         assert p.gdp_per_capita == 400
         assert p.infrastructure_index > 0
         assert p.development_index > 0
@@ -316,6 +351,7 @@ class TestNationalDigitalTwin:
 
 
 # ── Module 8: Decision AI ─────────────────────────────────────
+
 
 class TestDecisionAI:
     def test_answer_investir(self):
@@ -359,6 +395,7 @@ class TestDecisionAI:
 
 
 # ── Collector ──────────────────────────────────────────────────
+
 
 class TestDataCollector:
     def test_load_baseline(self):

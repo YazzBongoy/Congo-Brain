@@ -2,17 +2,23 @@
 
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
+from typing import Callable
 
 import bcrypt
-import requests
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from sqlalchemy.orm import Session
+from jwt import PyJWKClient
+from jwt.exceptions import PyJWTError
 
 from congo_brain.core.config import (
-    JWT_ALGORITHM, JWT_EXPIRE_MINUTES, SECRET_KEY,
-    KEYCLOAK_ENABLED, KEYCLOAK_JWKS_URL, KEYCLOAK_ISSUER, KEYCLOAK_CLIENT_ID,
+    JWT_ALGORITHM,
+    JWT_EXPIRE_MINUTES,
+    KEYCLOAK_CLIENT_ID,
+    KEYCLOAK_ENABLED,
+    KEYCLOAK_ISSUER,
+    KEYCLOAK_JWKS_URL,
+    SECRET_KEY,
 )
 from congo_brain.core.rbac import Permission, has_permission
 
@@ -37,47 +43,36 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 def decode_access_token(token: str) -> dict | None:
     try:
         return jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALGORITHM])
-    except JWTError:
+    except PyJWTError:
         return None
 
 
 # ── Keycloak JWKS ──────────────────────────────────────────────
 
+
 @lru_cache(maxsize=1)
-def _get_keycloak_jwks() -> dict:
-    """Fetch Keycloak JWKS (cached)."""
-    resp = requests.get(KEYCLOAK_JWKS_URL, timeout=10)
-    resp.raise_for_status()
-    return resp.json()
-
-
-def _get_keycloak_signing_key(kid: str) -> str:
-    """Extract RSA public key from JWKS by key ID."""
-    jwks = _get_keycloak_jwks()
-    for key in jwks.get("keys", []):
-        if key["kid"] == kid:
-            from jose import jwk
-            return jwk.construct(key).public_key().decode()
-    raise HTTPException(status_code=401, detail="Keycloak signing key not found")
+def _get_keycloak_jwk_client() -> PyJWKClient:
+    """Create a cached Keycloak JWKS client."""
+    return PyJWKClient(KEYCLOAK_JWKS_URL, timeout=10)
 
 
 def decode_keycloak_token(token: str) -> dict | None:
     """Validate a Keycloak JWT using JWKS."""
     try:
-        unverified = jwt.get_unverified_header(token)
-        kid = unverified.get("kid")
-        if not kid:
-            return None
-        signing_key = _get_keycloak_signing_key(kid)
+        signing_key = _get_keycloak_jwk_client().get_signing_key_from_jwt(token).key
         return jwt.decode(
-            token, signing_key, algorithms=["RS256"],
-            issuer=KEYCLOAK_ISSUER, audience=KEYCLOAK_CLIENT_ID,
+            token,
+            signing_key,
+            algorithms=["RS256"],
+            issuer=KEYCLOAK_ISSUER,
+            audience=KEYCLOAK_CLIENT_ID,
         )
     except Exception:
         return None
 
 
 # ── Unified auth ───────────────────────────────────────────────
+
 
 def _try_keycloak(token: str) -> dict | None:
     """Attempt Keycloak validation; returns normalized payload or None."""
@@ -86,32 +81,84 @@ def _try_keycloak(token: str) -> dict | None:
     payload = decode_keycloak_token(token)
     if payload is None:
         return None
-    # Normalize Keycloak claims to our internal format
-    roles = payload.get("realm_access", {}).get("roles", [])
-    role = "viewer"
-    for r in ["admin", "analyst", "viewer"]:
-        if r in roles:
-            role = r
-            break
+    # Normalize Keycloak claims to our internal format. Identity and application
+    # authorization claims are mandatory: a cryptographically valid token alone
+    # must never acquire a default application role.
+    subject = payload.get("sub")
+    if not isinstance(subject, str) or not subject.strip():
+        return None
+    realm_access = payload.get("realm_access")
+    if not isinstance(realm_access, dict):
+        return None
+    roles = realm_access.get("roles", [])
+    if not isinstance(roles, list):
+        return None
+    role = next(
+        (
+            candidate
+            for candidate in [
+                "admin",
+                "national_budget_admin",
+                "ministry_budget_officer",
+                "project_manager",
+                "auditor",
+                "executive_viewer",
+                "public_viewer",
+                "analyst",
+                "viewer",
+            ]
+            if candidate in roles
+        ),
+        None,
+    )
+    if role is None:
+        return None
+    attributes = payload.get("attributes", {})
+    if not isinstance(attributes, dict):
+        return None
+    direct_ministry = payload.get("ministry")
+    if direct_ministry is not None:
+        if not isinstance(direct_ministry, str):
+            return None
+        ministry = direct_ministry
+    else:
+        attribute_ministry = attributes.get("ministry")
+        if attribute_ministry is None:
+            ministry = None
+        elif (
+            isinstance(attribute_ministry, list)
+            and len(attribute_ministry) == 1
+            and isinstance(attribute_ministry[0], str)
+        ):
+            ministry = attribute_ministry[0]
+        else:
+            return None
+    email = payload.get("email", "")
+    preferred_username = payload.get("preferred_username", email)
+    if not isinstance(email, str) or not isinstance(preferred_username, str):
+        return None
     return {
-        "sub": payload.get("sub"),
-        "username": payload.get("preferred_username", payload.get("email", "")),
-        "email": payload.get("email", ""),
+        "sub": subject,
+        "username": preferred_username,
+        "email": email,
         "role": role,
+        "ministry": ministry,
         "auth_source": "keycloak",
     }
 
 
 def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
-    """Decode JWT and return the current user payload.
-    Tries Keycloak first (if enabled), then falls back to local JWT.
-    """
-    # Try Keycloak
-    kc_user = _try_keycloak(token)
-    if kc_user is not None:
-        return kc_user
+    """Decode a token using the single authentication authority configured."""
+    if KEYCLOAK_ENABLED:
+        kc_user = _try_keycloak(token)
+        if kc_user is not None:
+            return kc_user
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired Keycloak token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-    # Fallback to local JWT
     payload = decode_access_token(token)
     if payload is None:
         raise HTTPException(
@@ -122,7 +169,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> dict:
     return payload
 
 
-def require_role(*allowed_roles: str) -> dict:
+def require_role(*allowed_roles: str) -> Callable[..., dict]:
     """Dependency factory that enforces specific user roles."""
 
     def _check(current_user: dict = Depends(get_current_user)) -> dict:
@@ -136,7 +183,7 @@ def require_role(*allowed_roles: str) -> dict:
     return _check
 
 
-def require_permission(permission: Permission) -> dict:
+def require_permission(permission: Permission) -> Callable[..., dict]:
     """Dependency factory that enforces a specific permission."""
 
     def _check(current_user: dict = Depends(get_current_user)) -> dict:
@@ -149,3 +196,20 @@ def require_permission(permission: Permission) -> dict:
         return current_user
 
     return _check
+
+
+def resolve_ministry_scope(current_user: dict, requested_ministry: str | None = None) -> str | None:
+    """Resolve a ministry filter and block cross-ministry access for scoped officers."""
+    if current_user.get("role") != "ministry_budget_officer":
+        return requested_ministry
+    assigned = current_user.get("ministry")
+    if not assigned:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No ministry is assigned to this account")
+    if requested_ministry and requested_ministry.casefold() != assigned.casefold():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cross-ministry access is forbidden")
+    return str(assigned)
+
+
+def enforce_ministry_access(current_user: dict, resource_ministry: str) -> None:
+    """Reject access when a ministry officer targets another ministry."""
+    resolve_ministry_scope(current_user, resource_ministry)

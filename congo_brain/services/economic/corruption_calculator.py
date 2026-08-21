@@ -8,11 +8,13 @@ SNN costs = DWL + EC
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 
 @dataclass
 class DWLComponents:
     """Components of Deadweight Loss."""
+
     corruption: float = 0.0
     fraud: float = 0.0
     administrative_delays: float = 0.0
@@ -23,8 +25,12 @@ class DWLComponents:
     @property
     def total_dwl(self) -> float:
         return (
-            self.corruption + self.fraud + self.administrative_delays
-            + self.administrative_costs + self.rent_seeking + self.tax_evasion
+            self.corruption
+            + self.fraud
+            + self.administrative_delays
+            + self.administrative_costs
+            + self.rent_seeking
+            + self.tax_evasion
         )
 
     def to_dict(self) -> dict:
@@ -42,6 +48,7 @@ class DWLComponents:
 @dataclass
 class EnvironmentalCost:
     """Environmental cost components."""
+
     deforestation: float = 0.0
     pollution: float = 0.0
     water_contamination: float = 0.0
@@ -52,8 +59,12 @@ class EnvironmentalCost:
     @property
     def total_ec(self) -> float:
         return (
-            self.deforestation + self.pollution + self.water_contamination
-            + self.soil_degradation + self.biodiversity_loss + self.carbon_emissions
+            self.deforestation
+            + self.pollution
+            + self.water_contamination
+            + self.soil_degradation
+            + self.biodiversity_loss
+            + self.carbon_emissions
         )
 
     def to_dict(self) -> dict:
@@ -70,13 +81,21 @@ class EnvironmentalCost:
 
 # DRC baseline estimates (billions USD, annual)
 DRC_DWL_BASELINE = DWLComponents(
-    corruption=2.5, fraud=1.2, administrative_delays=0.8,
-    administrative_costs=0.6, rent_seeking=1.0, tax_evasion=1.5,
+    corruption=2.5,
+    fraud=1.2,
+    administrative_delays=0.8,
+    administrative_costs=0.6,
+    rent_seeking=1.0,
+    tax_evasion=1.5,
 )
 
 DRC_EC_BASELINE = EnvironmentalCost(
-    deforestation=1.2, pollution=0.8, water_contamination=0.5,
-    soil_degradation=0.4, biodiversity_loss=0.6, carbon_emissions=0.9,
+    deforestation=1.2,
+    pollution=0.8,
+    water_contamination=0.5,
+    soil_degradation=0.4,
+    biodiversity_loss=0.6,
+    carbon_emissions=0.9,
 )
 
 
@@ -139,18 +158,29 @@ class CorruptionCalculator:
         breakdown = []
         for name, value in components.items():
             pct = round(value / total * 100, 1) if total > 0 else 0
-            category = "DWL" if name in {
-                "Corruption", "Fraude", "Retards administratifs",
-                "Couts administratifs", "Recherche de rentes", "Evasion fiscale",
-            } else "EC"
-            breakdown.append({
-                "component": name,
-                "category": category,
-                "value": round(value, 2),
-                "percentage": pct,
-                "impact_on_snn": round(-value, 2),
-            })
-        breakdown.sort(key=lambda x: x["value"], reverse=True)
+            category = (
+                "DWL"
+                if name
+                in {
+                    "Corruption",
+                    "Fraude",
+                    "Retards administratifs",
+                    "Couts administratifs",
+                    "Recherche de rentes",
+                    "Evasion fiscale",
+                }
+                else "EC"
+            )
+            breakdown.append(
+                {
+                    "component": name,
+                    "category": category,
+                    "value": round(value, 2),
+                    "percentage": pct,
+                    "impact_on_snn": round(-value, 2),
+                }
+            )
+        breakdown.sort(key=lambda x: cast(float, x["value"]), reverse=True)
         return breakdown
 
     def scenario_analysis(self, dwl_reduction_pct: float = 0.0, ec_reduction_pct: float = 0.0) -> dict:
@@ -192,7 +222,7 @@ class CorruptionCalculator:
                 "priority": "Moyenne",
             },
         ]
-        targets.sort(key=lambda x: x["potential_recovery"], reverse=True)
+        targets.sort(key=lambda x: cast(float, x["potential_recovery"]), reverse=True)
         return targets
 
     def environmental_targets(self) -> list[dict]:
@@ -219,7 +249,7 @@ class CorruptionCalculator:
                 "priority": "Moyenne",
             },
         ]
-        targets.sort(key=lambda x: x["potential_recovery"], reverse=True)
+        targets.sort(key=lambda x: cast(float, x["potential_recovery"]), reverse=True)
         return targets
 
     def get_dashboard(self) -> dict:

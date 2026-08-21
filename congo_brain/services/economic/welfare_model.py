@@ -21,6 +21,7 @@ from dataclasses import dataclass
 @dataclass
 class SectorWelfare:
     """Welfare contribution of a single economic sector."""
+
     sector: str
     consumer_surplus: float = 0.0
     producer_surplus: float = 0.0
@@ -72,6 +73,7 @@ class SectorWelfare:
 @dataclass
 class EconomyConstraints:
     """Macroeconomic constraints for the DRC."""
+
     budget_ceiling: float = 0.0
     revenue: float = 0.0
     max_debt_to_gdp: float = 60.0
@@ -129,8 +131,14 @@ class WelfareModel:
         self.constraints = EconomyConstraints()
 
     def add_sector(
-        self, sector: str, cs: float, ps: float, revenue: float,
-        nrv: float = 0.0, dwl: float = 0.0, ec: float = 0.0,
+        self,
+        sector: str,
+        cs: float,
+        ps: float,
+        revenue: float,
+        nrv: float = 0.0,
+        dwl: float = 0.0,
+        ec: float = 0.0,
     ) -> SectorWelfare:
         sw = SectorWelfare(
             sector=sector,

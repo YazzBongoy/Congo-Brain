@@ -24,7 +24,7 @@ def _try_lp_optimize(
     composite score subject to the budget constraint.
     """
     try:
-        from scipy.optimize import linprog, milp, LinearConstraint, Bounds
+        from scipy.optimize import Bounds, LinearConstraint, milp
     except ImportError:
         return None
 
@@ -35,8 +35,9 @@ def _try_lp_optimize(
     # Costs (remaining budget needed for each project)
     costs = [inv.total_budget - inv.spent_amount for inv, _ in investments]
     # Composite scores (to maximize -> negate for minimization)
-    scores = [-(inv.roi_score * 0.5 + inv.efficiency_score * 0.3 + inv.social_impact_score * 0.2)
-              for inv, _ in investments]
+    scores = [
+        -(inv.roi_score * 0.5 + inv.efficiency_score * 0.3 + inv.social_impact_score * 0.2) for inv, _ in investments
+    ]
 
     # All variables are binary (0 or 1)
     integrality = [1] * n  # 1 = integer variable
@@ -162,11 +163,13 @@ def compare_scenarios(
     results = []
     for limit in sorted(budget_limits):
         result = optimize_portfolio(investments, limit)
-        results.append({
-            "budget_limit": limit,
-            "projects_selected": len(result["selected_projects"]),
-            "total_cost": result["total_cost"],
-            "expected_roi": result["expected_total_roi"],
-            "method": result["method"],
-        })
+        results.append(
+            {
+                "budget_limit": limit,
+                "projects_selected": len(result["selected_projects"]),
+                "total_cost": result["total_cost"],
+                "expected_roi": result["expected_total_roi"],
+                "method": result["method"],
+            }
+        )
     return results
