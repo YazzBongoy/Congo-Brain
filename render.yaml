@@ -18,6 +18,10 @@ services:
         value: "true"
       - key: KEYCLOAK_SERVER_URL
         sync: false
+      - key: KEYCLOAK_CLIENT_SECRET
+        sync: false
+      - key: PUBLIC_REGISTRATION_ENABLED
+        value: "false"
       - key: KEYCLOAK_REALM
         value: congo-brain
       - key: KEYCLOAK_CLIENT_ID
