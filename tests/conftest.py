@@ -1,14 +1,18 @@
 """Shared test fixtures for Congo-Brain."""
 
 import os
+import tempfile
+from pathlib import Path
 from typing import Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
-os.environ["DATABASE_URL"] = "sqlite:///test_congo_brain.db"
+TEST_DATABASE_PATH = Path(tempfile.gettempdir()) / f"congo_brain_tests_{os.getpid()}.db"
+TEST_DATABASE_URL = f"sqlite:///{TEST_DATABASE_PATH}"
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
 os.environ["ENVIRONMENT"] = "development"
 os.environ["PUBLIC_REGISTRATION_ENABLED"] = "true"
@@ -18,14 +22,23 @@ from congo_brain.api.server import app  # noqa: E402
 from congo_brain.core.database import Base, get_db  # noqa: E402
 from congo_brain.models.user import User  # noqa: E402
 
-TEST_DATABASE_URL = "sqlite:///test_congo_brain.db"
 engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
 TestSession = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+
+def pytest_sessionfinish() -> None:
+    """Remove the process-isolated SQLite database after the test session."""
+    engine.dispose()
+    TEST_DATABASE_PATH.unlink(missing_ok=True)
 
 
 @pytest.fixture(autouse=True)
 def setup_database() -> Generator[None, None, None]:
     Base.metadata.create_all(bind=engine)
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL)"))
+        connection.execute(text("DELETE FROM alembic_version"))
+        connection.execute(text("INSERT INTO alembic_version (version_num) VALUES ('a93d8e71c4b2')"))
     yield
     Base.metadata.drop_all(bind=engine)
 

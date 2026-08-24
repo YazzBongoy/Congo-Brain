@@ -64,7 +64,7 @@ Create the following realm roles using the exact lowercase identifiers:
 | `executive_viewer` | Cross-domain executive read access |
 | `public_viewer` | Approved budget, investment, and transparency read access |
 
-Legacy roles `analyst` and `viewer` remain recognized for compatibility but should not be assigned to new production users.
+Legacy roles `analyst` and `viewer` remain recognized for compatibility but should not be assigned to new production users. The Keycloak bootstrap reconciles `public_viewer`—never legacy `viewer`—into the realm default-role composite; a newly provisioned account therefore receives only the minimal approved read permissions until an administrator assigns another role.
 
 If a token contains multiple recognized roles, Congo-Brain applies the highest-priority role in this order:
 

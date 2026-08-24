@@ -38,6 +38,26 @@ def test_keycloak_mode_accepts_only_normalized_keycloak_identity(monkeypatch: py
     assert identity["auth_source"] == "keycloak"
 
 
+def test_keycloak_mode_accepts_real_token_shape_with_null_attributes(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(security, "KEYCLOAK_ENABLED", True)
+    monkeypatch.setattr(
+        security,
+        "decode_keycloak_token",
+        lambda _token: {
+            "sub": "kc-real-shape",
+            "preferred_username": "public-user",
+            "email": None,
+            "realm_access": {"roles": ["public_viewer"]},
+            "attributes": None,
+        },
+    )
+
+    identity = security.get_current_user("keycloak-token")
+
+    assert identity["role"] == "public_viewer"
+    assert identity["ministry"] is None
+
+
 def test_keycloak_token_without_application_role_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(security, "KEYCLOAK_ENABLED", True)
     monkeypatch.setattr(

@@ -8,6 +8,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import sessionmaker
 
+from congo_brain.core import database
 from congo_brain.models.audit import AuditEvent
 from congo_brain.services.audit_service import record_audit_event, verify_audit_chain
 
@@ -57,3 +58,99 @@ def test_postgresql_audit_chain_is_serialized_and_immutable() -> None:
         assert verify_audit_chain(session.query(AuditEvent).order_by(AuditEvent.id.asc()).all()) is True
 
     engine.dispose()
+
+
+def test_release_catalog_rejects_disabled_and_replica_only_triggers() -> None:
+    """Only origin/always triggers protect normal application writes."""
+    assert POSTGRES_TEST_URL is not None
+    engine = create_engine(POSTGRES_TEST_URL, pool_pre_ping=True)
+    catalog_count = text(
+        """
+        SELECT COUNT(*)
+        FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        JOIN pg_proc p ON p.oid = t.tgfoid
+        WHERE n.nspname = current_schema()
+          AND c.relname = 'audit_events'
+          AND NOT t.tgisinternal
+          AND t.tgenabled IN ('O', 'A')
+          AND p.proname = 'prevent_audit_event_mutation'
+          AND regexp_replace(p.prosrc, '\\s+', ' ', 'g')
+              ~ '^ *BEGIN RAISE EXCEPTION ''audit_events is append-only''; END; *$'
+          AND (
+            (t.tgname = 'audit_events_immutable' AND t.tgtype = 27)
+            OR
+            (t.tgname = 'audit_events_no_truncate' AND t.tgtype = 34)
+          )
+        """
+    )
+
+    with engine.begin() as connection:
+        try:
+            for trigger in ("audit_events_immutable", "audit_events_no_truncate"):
+                connection.execute(text(f"ALTER TABLE audit_events ENABLE REPLICA TRIGGER {trigger}"))
+            assert connection.execute(catalog_count).scalar_one() == 0
+
+            for trigger in ("audit_events_immutable", "audit_events_no_truncate"):
+                connection.execute(text(f"ALTER TABLE audit_events DISABLE TRIGGER {trigger}"))
+            assert connection.execute(catalog_count).scalar_one() == 0
+
+            for trigger in ("audit_events_immutable", "audit_events_no_truncate"):
+                connection.execute(text(f"ALTER TABLE audit_events ENABLE ALWAYS TRIGGER {trigger}"))
+            assert connection.execute(catalog_count).scalar_one() == 2
+        finally:
+            for trigger in ("audit_events_immutable", "audit_events_no_truncate"):
+                connection.execute(text(f"ALTER TABLE audit_events ENABLE TRIGGER {trigger}"))
+
+    engine.dispose()
+
+
+def test_application_startup_rejects_replica_only_audit_triggers(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert POSTGRES_TEST_URL is not None
+    engine = create_engine(POSTGRES_TEST_URL, pool_pre_ping=True)
+    monkeypatch.setattr(database, "engine", engine)
+    try:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE audit_events ENABLE REPLICA TRIGGER audit_events_immutable"))
+            connection.execute(text("ALTER TABLE audit_events ENABLE REPLICA TRIGGER audit_events_no_truncate"))
+        with pytest.raises(RuntimeError, match="append-only audit triggers"):
+            database.verify_database_migrations()
+    finally:
+        with engine.begin() as connection:
+            connection.execute(text("ALTER TABLE audit_events ENABLE TRIGGER audit_events_immutable"))
+            connection.execute(text("ALTER TABLE audit_events ENABLE TRIGGER audit_events_no_truncate"))
+        engine.dispose()
+
+
+def test_application_startup_rejects_permissive_audit_function(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert POSTGRES_TEST_URL is not None
+    engine = create_engine(POSTGRES_TEST_URL, pool_pre_ping=True)
+    monkeypatch.setattr(database, "engine", engine)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    CREATE OR REPLACE FUNCTION prevent_audit_event_mutation()
+                    RETURNS trigger AS $$ BEGIN RETURN COALESCE(NEW, OLD); END; $$ LANGUAGE plpgsql
+                    """
+                )
+            )
+        with pytest.raises(RuntimeError, match="append-only audit triggers"):
+            database.verify_database_migrations()
+    finally:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    CREATE OR REPLACE FUNCTION prevent_audit_event_mutation()
+                    RETURNS trigger AS $$
+                    BEGIN
+                        RAISE EXCEPTION 'audit_events is append-only';
+                    END;
+                    $$ LANGUAGE plpgsql
+                    """
+                )
+            )
+        engine.dispose()

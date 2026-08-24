@@ -113,8 +113,10 @@ def _try_keycloak(token: str) -> dict | None:
     )
     if role is None:
         return None
-    attributes = payload.get("attributes", {})
-    if not isinstance(attributes, dict):
+    attributes = payload.get("attributes")
+    if attributes is None:
+        attributes = {}
+    elif not isinstance(attributes, dict):
         return None
     direct_ministry = payload.get("ministry")
     if direct_ministry is not None:
@@ -133,7 +135,9 @@ def _try_keycloak(token: str) -> dict | None:
             ministry = attribute_ministry[0]
         else:
             return None
-    email = payload.get("email", "")
+    email = payload.get("email")
+    if email is None:
+        email = ""
     preferred_username = payload.get("preferred_username", email)
     if not isinstance(email, str) or not isinstance(preferred_username, str):
         return None

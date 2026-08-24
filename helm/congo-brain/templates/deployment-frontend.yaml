@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: "{{ .Values.image.frontend.repository }}:{{ .Values.image.frontend.tag }}"
+          image: {{ include "congo-brain.image" .Values.image.frontend | quote }}
           imagePullPolicy: {{ .Values.image.frontend.pullPolicy }}
           ports:
             - containerPort: 80

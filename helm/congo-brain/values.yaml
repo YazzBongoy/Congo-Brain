@@ -7,12 +7,14 @@ replicaCount:
 image:
   app:
     repository: ghcr.io/yazzbongoy/congo-brain
-    tag: "latest"
-    pullPolicy: IfNotPresent
+    tag: ""
+    digest: ""
+    pullPolicy: Always
   frontend:
     repository: ghcr.io/yazzbongoy/congo-brain-frontend
-    tag: "latest"
-    pullPolicy: IfNotPresent
+    tag: ""
+    digest: ""
+    pullPolicy: Always
 
 service:
   app:
@@ -33,28 +35,32 @@ ingress:
       paths:
         - path: /api
           pathType: Prefix
-          backend:
-            service:
-              name: congo-brain-app
-              port:
-                number: 8000
+          component: app
         - path: /
           pathType: Prefix
-          backend:
-            service:
-              name: congo-brain-frontend
-              port:
-                number: 80
+          component: frontend
   tls: []
 
 env:
-  DATABASE_URL: "postgresql+psycopg2://congo:congo_secret@postgres:5432/congo_brain"
-  SECRET_KEY: "change-me-in-production"
   KEYCLOAK_ENABLED: "true"
   KEYCLOAK_SERVER_URL: ""
   KEYCLOAK_REALM: "congo-brain"
   KEYCLOAK_CLIENT_ID: "congo-brain-api"
+  KEYCLOAK_ADMIN: "admin"
+  KEYCLOAK_FRONTEND_URL: ""
+  KEYCLOAK_API_URL: ""
   ENVIRONMENT: "production"
+
+appSecret:
+  existingSecret: ""
+
+# Pre-created Secret keys: keycloak-admin-password, keycloak-client-secret,
+# and optionally confirm-remove-legacy-admin=REMOVE after explicit approval.
+identitySecret:
+  existingSecret: ""
+
+database:
+  existingSecret: ""
 
 resources:
   app:
@@ -78,25 +84,3 @@ autoscaling:
   maxReplicas: 10
   targetCPUUtilizationPercentage: 75
   targetMemoryUtilizationPercentage: 80
-
-postgresql:
-  enabled: true
-  auth:
-    username: congo
-    password: congo_secret
-    database: congo_brain
-  primary:
-    persistence:
-      size: 10Gi
-
-grafana:
-  enabled: true
-  adminUser: admin
-  adminPassword: congo_grafana
-  persistence:
-    size: 5Gi
-
-prometheus:
-  enabled: true
-  persistence:
-    size: 10Gi

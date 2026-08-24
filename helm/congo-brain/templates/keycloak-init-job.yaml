@@ -1,0 +1,73 @@
+{{- if eq (toString .Values.env.KEYCLOAK_ENABLED) "true" }}
+{{- $keycloakURL := required "env.KEYCLOAK_SERVER_URL is required when Keycloak is enabled" .Values.env.KEYCLOAK_SERVER_URL }}
+{{- if and (or (eq (toString .Values.env.ENVIRONMENT) "production") (eq (toString .Values.env.ENVIRONMENT) "staging")) (not (regexMatch "^https://[^[:space:]/]+(/.*)?$" $keycloakURL)) }}
+{{- fail "env.KEYCLOAK_SERVER_URL must be an absolute HTTPS URL in production/staging" }}
+{{- end }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "congo-brain.appName" . }}-keycloak-init
+  labels:
+    {{- include "congo-brain.labels" . | nindent 4 }}
+    app.kubernetes.io/component: keycloak-init
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        {{- include "congo-brain.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: keycloak-init
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      containers:
+        - name: keycloak-init
+          image: {{ include "congo-brain.image" .Values.image.app | quote }}
+          imagePullPolicy: {{ .Values.image.app.pullPolicy }}
+          command: ["bash", "scripts/keycloak-init.sh"]
+          env:
+            - name: KEYCLOAK_URL
+              value: {{ $keycloakURL | quote }}
+            - name: ENVIRONMENT
+              value: {{ .Values.env.ENVIRONMENT | quote }}
+            - name: KEYCLOAK_REALM
+              value: {{ .Values.env.KEYCLOAK_REALM | quote }}
+            - name: KEYCLOAK_CLIENT_ID
+              value: {{ .Values.env.KEYCLOAK_CLIENT_ID | quote }}
+            - name: KEYCLOAK_ADMIN
+              value: {{ .Values.env.KEYCLOAK_ADMIN | quote }}
+            - name: KEYCLOAK_FRONTEND_URL
+              value: {{ required "env.KEYCLOAK_FRONTEND_URL is required when Keycloak is enabled" .Values.env.KEYCLOAK_FRONTEND_URL | quote }}
+            - name: KEYCLOAK_API_URL
+              value: {{ required "env.KEYCLOAK_API_URL is required when Keycloak is enabled" .Values.env.KEYCLOAK_API_URL | quote }}
+            - name: KEYCLOAK_DIRECT_GRANTS_ENABLED
+              value: "false"
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "identitySecret.existingSecret is required when Keycloak is enabled" .Values.identitySecret.existingSecret }}
+                  key: keycloak-admin-password
+            - name: KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "identitySecret.existingSecret is required when Keycloak is enabled" .Values.identitySecret.existingSecret }}
+                  key: keycloak-client-secret
+            - name: CONFIRM_REMOVE_LEGACY_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "identitySecret.existingSecret is required when Keycloak is enabled" .Values.identitySecret.existingSecret }}
+                  key: confirm-remove-legacy-admin
+                  optional: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+{{- end }}

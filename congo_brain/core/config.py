@@ -3,6 +3,7 @@
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -35,7 +36,16 @@ if ENVIRONMENT in {"production", "staging"} and not KEYCLOAK_ENABLED:
         file=sys.stderr,
     )
     sys.exit(1)
-KEYCLOAK_SERVER_URL: str = os.getenv("KEYCLOAK_SERVER_URL", "http://localhost:8080")
+_keycloak_server_url = os.getenv("KEYCLOAK_SERVER_URL")
+if ENVIRONMENT in {"production", "staging"}:
+    if not _keycloak_server_url:
+        print("FATAL: KEYCLOAK_SERVER_URL must be explicitly set in production and staging.", file=sys.stderr)
+        sys.exit(1)
+    parsed_keycloak_url = urlparse(_keycloak_server_url)
+    if parsed_keycloak_url.scheme != "https" or not parsed_keycloak_url.netloc:
+        print("FATAL: KEYCLOAK_SERVER_URL must be an absolute HTTPS URL in production and staging.", file=sys.stderr)
+        sys.exit(1)
+KEYCLOAK_SERVER_URL: str = (_keycloak_server_url or "http://localhost:8080").rstrip("/")
 KEYCLOAK_REALM: str = os.getenv("KEYCLOAK_REALM", "congo-brain")
 KEYCLOAK_CLIENT_ID: str = os.getenv("KEYCLOAK_CLIENT_ID", "congo-brain-api")
 KEYCLOAK_CLIENT_SECRET: str = os.getenv("KEYCLOAK_CLIENT_SECRET", "")

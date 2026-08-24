@@ -14,8 +14,8 @@ from slowapi.util import get_remote_address
 
 from congo_brain import __app_name__, __version__
 from congo_brain.api.v1.router import v1_router
-from congo_brain.core.config import ENVIRONMENT, RATE_LIMIT_PER_MINUTE
-from congo_brain.core.database import check_db_health, init_db
+from congo_brain.core.config import ENVIRONMENT, KEYCLOAK_ENABLED, KEYCLOAK_JWKS_URL, RATE_LIMIT_PER_MINUTE
+from congo_brain.core.database import check_db_health, verify_database_migrations
 from congo_brain.core.monitoring import PrometheusMiddleware, metrics_router
 from congo_brain.core.rbac import Permission
 from congo_brain.core.security import require_permission
@@ -27,7 +27,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=[f"{RATE_LIMIT_PER
 
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
-    init_db()
+    verify_database_migrations()
     yield
 
 
@@ -85,13 +85,30 @@ def root() -> FileResponse:
 @app.get("/health", tags=["Health"])
 def health_check() -> JSONResponse:
     db_ok = check_db_health()
-    status_code = 200 if db_ok else 503
+    keycloak_ok = True
+    if KEYCLOAK_ENABLED:
+        try:
+            import json
+            from urllib.request import urlopen
+
+            with urlopen(KEYCLOAK_JWKS_URL, timeout=3) as response:  # noqa: S310 - validated deployment URL
+                jwks = json.load(response)
+            keycloak_ok = (
+                response.status == 200
+                and isinstance(jwks, dict)
+                and isinstance(jwks.get("keys"), list)
+                and bool(jwks["keys"])
+            )
+        except (OSError, ValueError, TypeError):
+            keycloak_ok = False
+    status_code = 200 if db_ok and keycloak_ok else 503
     return JSONResponse(
         status_code=status_code,
         content={
-            "status": "healthy" if db_ok else "degraded",
+            "status": "healthy" if db_ok and keycloak_ok else "degraded",
             "app": __app_name__,
             "version": __version__,
             "database": "ok" if db_ok else "unreachable",
+            "keycloak": "ok" if keycloak_ok else "unreachable",
         },
     )
