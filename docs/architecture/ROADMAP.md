@@ -62,23 +62,33 @@
 - Intervalles de confiance 5%-95%
 - 202 tests
 
-## Phase Monitoring (EN COURS)
+## Phase Monitoring — Prometheus/Grafana ✅ (commit 45d3049)
 - Prometheus + Grafana
 - Métriques HTTP, latence, erreurs
 - SNN gauge
 - Dashboard Grafana provisionné
 
-## Phase 5 — Kubernetes ⏳
-- Helm charts
-- Ingress, ConfigMaps, Secrets
-- HPA autoscaling
+## Option 5 — Helm/Kubernetes ✅ (commit bc2dd29)
+- Helm charts, Ingress, ConfigMaps, Secrets
+- Values staging/production
 
-## Phase 6 — Export Rapports ⏳
-- PDF (reportlab)
-- Excel (openpyxl)
-- Templates officiels RDC
+## Option 6 — Export Rapports ✅ (commit 73c5770)
+- PDF (fpdf2) / Excel (openpyxl)
+- Rapports budget et optimisation
 
-## Phase 7 — GraphQL ⏳
-- Strawberry GraphQL
-- Schéma complet entités
-- Subscriptions temps réel
+## Option 7 — GraphQL ✅ (commit b77ee62)
+- Strawberry GraphQL, schéma entités complet
+
+## Workstream 1 — Auth & Audit ✅ (commits bfaed01 → e3d652b)
+- Auth Keycloak-first (RS256/JWKS), fallback local dev uniquement
+- RBAC 9 rôles hiérarchisés + cloisonnement ministère (`ministry_budget_officer`)
+- Journal d'audit inviolable : hash-chain SHA-256, écritures transactionnelles fail-closed
+- Triggers PostgreSQL anti-UPDATE/DELETE/TRUNCATE sur audit_events
+- ~305 tests ; doc d'exploitation : docs/security/KEYCLOAK_RBAC_AUDIT.md
+
+## Workstream 2 — Socle Release (EN COURS)
+- [x] Migration a93d8e71c4b2 (users.role String(64)) committée, round-trip SQLite+PG vérifié
+- [ ] Resynchronisation README / ROADMAP avec l'état réel
+- [ ] Durcissement render.yaml + checklist release exécutable
+- [ ] Externalisation des secrets Helm
+- [ ] Runbook backup/restore PostgreSQL
