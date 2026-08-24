@@ -26,11 +26,14 @@ spec:
               protocol: TCP
           env:
             - name: DATABASE_URL
-              value: {{ .Values.env.DATABASE_URL | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | default (printf "%s-secrets" .Release.Name) }}
+                  key: database-url
             - name: SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Release.Name }}-secrets
+                  name: {{ .Values.appSecret.existingSecret | default (printf "%s-secrets" .Release.Name) }}
                   key: secret-key
             - name: KEYCLOAK_ENABLED
               value: {{ .Values.env.KEYCLOAK_ENABLED | quote }}

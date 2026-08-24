@@ -48,13 +48,19 @@ ingress:
   tls: []
 
 env:
-  DATABASE_URL: "postgresql+psycopg2://congo:congo_secret@postgres:5432/congo_brain"
-  SECRET_KEY: "change-me-in-production"
   KEYCLOAK_ENABLED: "true"
   KEYCLOAK_SERVER_URL: ""
   KEYCLOAK_REALM: "congo-brain"
   KEYCLOAK_CLIENT_ID: "congo-brain-api"
   ENVIRONMENT: "production"
+
+appSecret:
+  existingSecret: ""
+  key: ""
+
+database:
+  existingSecret: ""
+  url: ""
 
 resources:
   app:
@@ -83,7 +89,7 @@ postgresql:
   enabled: true
   auth:
     username: congo
-    password: congo_secret
+    existingSecret: ""
     database: congo_brain
   primary:
     persistence:
@@ -92,7 +98,7 @@ postgresql:
 grafana:
   enabled: true
   adminUser: admin
-  adminPassword: congo_grafana
+  existingSecret: ""
   persistence:
     size: 5Gi
 
