@@ -50,7 +50,10 @@ def test_keycloak_bootstrap_reconciles_insecure_legacy_state() -> None:
         },
         "legacy_user": True,
         "default_composites": {"viewer", "admin", "auditor", "privileged-wrapper"},
-        "role_closures": {"privileged-wrapper": {"admin"}},
+        "role_closures": {
+            "privileged-wrapper": {"admin"},
+            "ministry_budget_officer": {"admin"},
+        },
         "audience_mapper": {
             "id": "mapper-uuid",
             "name": "congo-brain-api-audience",
@@ -146,8 +149,17 @@ def test_keycloak_bootstrap_reconciles_insecure_legacy_state() -> None:
                     200,
                     [{"id": f"{role}-role", "name": role} for role in sorted(closures.get(role_name, set()))],
                 )
-            elif parsed.path.endswith("/roles-by-id/public_viewer-role/composites"):
-                self._send(200, [])
+            elif "/roles-by-id/" in parsed.path and parsed.path.endswith("/composites") and not parsed.path.endswith(
+                "/roles-by-id/default-role/composites"
+            ):
+                role_id = parsed.path.split("/roles-by-id/", 1)[1].split("/", 1)[0]
+                role_name = role_id.removesuffix("-role")
+                closures = state["role_closures"]
+                assert isinstance(closures, dict)
+                self._send(
+                    200,
+                    [{"id": f"{role}-role", "name": role} for role in sorted(closures.get(role_name, set()))],
+                )
             elif parsed.path.endswith("/roles-by-id/default-role/composites"):
                 composites = state["default_composites"]
                 assert isinstance(composites, set)
@@ -162,7 +174,14 @@ def test_keycloak_bootstrap_reconciles_insecure_legacy_state() -> None:
             if "/protocol-mappers/models/" in self.path:
                 state["audience_mapper"] = None
                 self._send(204)
-            elif self.path.endswith("/roles-by-id/public_viewer-role/composites"):
+            elif "/roles-by-id/" in self.path and self.path.endswith("/composites") and not self.path.endswith(
+                "/roles-by-id/default-role/composites"
+            ):
+                role_id = self.path.split("/roles-by-id/", 1)[1].split("/", 1)[0]
+                role_name = role_id.removesuffix("-role")
+                closures = state["role_closures"]
+                assert isinstance(closures, dict)
+                closures[role_name] = set()
                 self._send(204)
             elif self.path.endswith("/roles-by-id/default-role/composites"):
                 composites = state["default_composites"]
@@ -227,3 +246,6 @@ def test_keycloak_bootstrap_reconciles_insecure_legacy_state() -> None:
     assert mapper["config"]["included.client.audience"] == "congo-brain-api"
     assert state["legacy_user"] is False
     assert state["default_composites"] == {"public_viewer"}
+    closures = state["role_closures"]
+    assert isinstance(closures, dict)
+    assert closures["ministry_budget_officer"] == set()

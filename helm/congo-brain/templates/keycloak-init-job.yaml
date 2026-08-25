@@ -1,6 +1,6 @@
 {{- if eq (toString .Values.env.KEYCLOAK_ENABLED) "true" }}
 {{- $keycloakURL := required "env.KEYCLOAK_SERVER_URL is required when Keycloak is enabled" .Values.env.KEYCLOAK_SERVER_URL }}
-{{- if and (or (eq (toString .Values.env.ENVIRONMENT) "production") (eq (toString .Values.env.ENVIRONMENT) "staging")) (not (regexMatch "^https://[^[:space:]/]+(/.*)?$" $keycloakURL)) }}
+{{- if and (or (eq (toString .Values.env.ENVIRONMENT) "production") (eq (toString .Values.env.ENVIRONMENT) "staging")) (not (regexMatch "^https://[^@[:space:]/]+(/.*)?$" $keycloakURL)) }}
 {{- fail "env.KEYCLOAK_SERVER_URL must be an absolute HTTPS URL in production/staging" }}
 {{- end }}
 apiVersion: batch/v1

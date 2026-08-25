@@ -175,20 +175,31 @@ for role in "${application_roles[@]}"; do
     post_allow_conflict "/admin/realms/$(urlencode "$REALM")/roles" "$role_payload" "role $role"
 done
 
-# Keep public_viewer as a leaf role, then reject direct or nested application-role
-# drift through any wrapper assigned to Keycloak's generated default composite.
+# Application roles are authorization leaves. Remove every inherited role from
+# every application role before reconciling the default-role graph.
+for role in "${application_roles[@]}"; do
+    role_file="$temporary_dir/application-role-$(printf '%s' "$role" | tr -cd 'A-Za-z0-9_-').json"
+    composites_file="$temporary_dir/application-role-composites-$(printf '%s' "$role" | tr -cd 'A-Za-z0-9_-').json"
+    request GET "/admin/realms/$(urlencode "$REALM")/roles/$(urlencode "$role")" "$role_file"
+    role_id=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["id"])' "$role_file")
+    request GET "/admin/realms/$(urlencode "$REALM")/roles-by-id/$(urlencode "$role_id")/composites" \
+        "$composites_file"
+    composite_count=$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1], encoding="utf-8"))))' \
+        "$composites_file")
+    if [ "$composite_count" -gt 0 ]; then
+        request DELETE "/admin/realms/$(urlencode "$REALM")/roles-by-id/$(urlencode "$role_id")/composites" \
+            "$temporary_dir/response.json" -H 'Content-Type: application/json' \
+            --data-binary "@$composites_file"
+    fi
+    request GET "/admin/realms/$(urlencode "$REALM")/roles-by-id/$(urlencode "$role_id")/composites" \
+        "$composites_file"
+    python3 - "$composites_file" "$role" <<'PY'
+import json, sys
+
+assert json.load(open(sys.argv[1], encoding="utf-8")) == [], f"application role {sys.argv[2]} is not a leaf"
+PY
+done
 request GET "/admin/realms/$(urlencode "$REALM")/roles/public_viewer" "$temporary_dir/public-viewer-role.json"
-public_viewer_id=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["id"])' \
-    "$temporary_dir/public-viewer-role.json")
-request GET "/admin/realms/$(urlencode "$REALM")/roles-by-id/$(urlencode "$public_viewer_id")/composites" \
-    "$temporary_dir/public-viewer-composites.json"
-public_viewer_composite_count=$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1], encoding="utf-8"))))' \
-    "$temporary_dir/public-viewer-composites.json")
-if [ "$public_viewer_composite_count" -gt 0 ]; then
-    request DELETE "/admin/realms/$(urlencode "$REALM")/roles-by-id/$(urlencode "$public_viewer_id")/composites" \
-        "$temporary_dir/response.json" -H 'Content-Type: application/json' \
-        --data-binary "@$temporary_dir/public-viewer-composites.json"
-fi
 
 request GET "/admin/realms/$(urlencode "$REALM")" "$temporary_dir/realm.json"
 default_role_id=$(python3 - "$temporary_dir/realm.json" <<'PY'

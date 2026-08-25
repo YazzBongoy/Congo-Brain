@@ -257,6 +257,18 @@ jobs:
             echo 'Production Helm must reject an HTTP Keycloak URL' >&2
             exit 1
           fi
+          if helm template userinfo helm/congo-brain \
+            --set appSecret.existingSecret=ws2-app \
+            --set database.existingSecret=ws2-db \
+            --set identitySecret.existingSecret=ws2-identity \
+            --set "image.app.tag=sha-${GITHUB_SHA}" \
+            --set "image.frontend.tag=sha-${GITHUB_SHA}" \
+            --set env.KEYCLOAK_SERVER_URL=https://user:password@keycloak.example.invalid \
+            --set env.KEYCLOAK_FRONTEND_URL=https://app.example.invalid \
+            --set env.KEYCLOAK_API_URL=https://api.example.invalid >/dev/null 2>&1; then
+            echo 'Production Helm must reject Keycloak URL userinfo' >&2
+            exit 1
+          fi
           if helm template mutable helm/congo-brain \
             --set appSecret.existingSecret=ws2-app \
             --set database.existingSecret=ws2-db \

@@ -112,3 +112,9 @@ def health_check() -> JSONResponse:
             "keycloak": "ok" if keycloak_ok else "unreachable",
         },
     )
+
+
+@app.get("/live", tags=["Health"])
+def liveness_check() -> dict[str, str]:
+    """Report process liveness without coupling it to external dependencies."""
+    return {"status": "alive"}

@@ -95,7 +95,9 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
       SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
       KEYCLOAK_ENABLED: "true"
-      KEYCLOAK_SERVER_URL: http://keycloak:8080
+      # Browser-visible issuer and container-only JWKS backchannel are distinct.
+      KEYCLOAK_SERVER_URL: http://localhost:8080
+      KEYCLOAK_BACKCHANNEL_URL: http://keycloak:8080
       KEYCLOAK_REALM: congo-brain
       KEYCLOAK_CLIENT_ID: congo-brain-api
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?Set KEYCLOAK_CLIENT_SECRET in .env}

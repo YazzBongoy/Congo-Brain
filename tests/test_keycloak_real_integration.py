@@ -89,6 +89,15 @@ def test_real_keycloak_default_role_and_all_application_tokens(monkeypatch: pyte
         realm = _request("GET", "/admin/realms/congo-brain", token).json()
         default_role_id = str(realm["defaultRole"]["id"])
         admin_role = _request("GET", "/admin/realms/congo-brain/roles/admin", token).json()
+        officer_role = _request(
+            "GET", "/admin/realms/congo-brain/roles/ministry_budget_officer", token
+        ).json()
+        _request(
+            "POST",
+            f"/admin/realms/congo-brain/roles-by-id/{officer_role['id']}/composites",
+            token,
+            json=[admin_role],
+        )
         drift_wrapper_name = f"ws2-privileged-wrapper-{uuid.uuid4().hex[:8]}"
         _request("POST", "/admin/realms/congo-brain/roles", token, json={"name": drift_wrapper_name})
         wrapper_role = _request(
@@ -118,6 +127,10 @@ def test_real_keycloak_default_role_and_all_application_tokens(monkeypatch: pyte
             check=False,
         )
         assert bootstrap.returncode == 0, bootstrap.stdout + bootstrap.stderr
+        officer_effective = _request(
+            "GET", f"/admin/realms/congo-brain/roles-by-id/{officer_role['id']}/composites/realm", token
+        ).json()
+        assert {role["name"] for role in officer_effective} == set()
 
         default_username = f"ws2-default-{uuid.uuid4().hex[:10]}"
         default_id = _create_user(token, default_username, "Ws2-default-Only-47!")
