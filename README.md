@@ -72,12 +72,16 @@ Congo-Brain
 │   │       ├── investment_optimizer.py        # Optimiseur LP/MILP
 │   │       └── risk_analyzer.py               # Analyse de risques
 │   └── cli/                                   # CLI Typer
-├── tests/                                     # 179 tests
-│   ├── test_geos.py                           # 40 tests GEOS
+├── tests/                                     # 318 tests locaux + intégration PostgreSQL
 │   ├── test_ia_gov.py                         # 52 tests IA GOV
-│   ├── test_economic_engine.py                # 33 tests MOEG
-│   ├── test_anomaly_detector.py               # 10 tests IA
-│   ├── test_auth_api.py                       # 14 tests auth
+│   ├── test_economic_engine.py                # 45 tests MOEG
+│   ├── test_geos.py                           # 41 tests GEOS
+│   ├── test_predictor.py                      # 23 tests prédictions ML
+│   ├── test_auth_api.py                       # 22 tests auth/RBAC
+│   ├── test_graphql.py                        # 17 tests GraphQL
+│   ├── test_audit_log.py                      # 15 tests audit inviolable
+│   ├── test_ministry_authorization.py         # cloisonnement ministère
+│   ├── test_reports.py                        # exports PDF/Excel
 │   └── test_security.py                       # 10 tests sécurité
 ├── alembic/                                   # Migrations DB
 └── docs/iagov/                                # Documentation architecture
@@ -208,7 +212,7 @@ GET  /roles                        # Liste des rôles
 - **GitHub Actions** — CI/CD (tests + build Docker)
 - **Typer + Rich** — CLI
 - **slowapi** — rate limiting
-- **pytest** — 179 tests
+- **pytest** — 318 tests locaux + gate d'intégration PostgreSQL
 
 ## Installation
 
@@ -234,14 +238,22 @@ docker compose up -d
 
 Cela lance :
 - **PostgreSQL** sur `localhost:5432`
-- **Keycloak** sur `localhost:8080` (admin / admin_secret_2026)
+- **Keycloak** sur `localhost:8080` (compte admin configuré dans le fichier `.env` local)
 - **Congo-Brain API** sur `localhost:8000`
 
-Initialiser Keycloak :
+Compose exécute automatiquement les migrations Alembic et initialise/réconcilie Keycloak avant de démarrer l'API.
+Pour relancer uniquement la réconciliation Keycloak :
 
 ```bash
-docker exec -it congo-brain-keycloak bash /opt/keycloak/init.sh
+set -a
+. ./.env
+set +a
+KEYCLOAK_URL=http://localhost:8080 scripts/keycloak-init.sh
 ```
+
+Le script réconcilie le realm et le client existants, impose les réglages sécurisés et fait échouer l'opération si
+l'ancien compte de démonstration `admin` subsiste. Après approbation explicite de sa suppression, relancer avec
+`CONFIRM_REMOVE_LEGACY_ADMIN=REMOVE`. Le secret client fourni est alors renouvelé sans être écrit dans les logs.
 
 ## Utilisation
 
@@ -249,6 +261,7 @@ docker exec -it congo-brain-keycloak bash /opt/keycloak/init.sh
 
 ```bash
 # Sans Docker
+alembic upgrade head
 uvicorn congo_brain.api.server:app --reload
 
 # Avec Docker
@@ -267,14 +280,14 @@ congo-brain --help
 
 ```bash
 pytest tests/ -v
-# 179 passed
+# 340 passed, 5 tests d’intégration conditionnels hors services externes
 ```
 
 ### Keycloak (SSO)
 
 Quand `KEYCLOAK_ENABLED=true` :
 - L'authentification utilise les tokens Keycloak (RS256, JWKS)
-- Les rôles Keycloak (admin, analyst, viewer)映射 vers les rôles internes
+- Les neuf rôles Keycloak documentés sont mappés vers les rôles internes
 - Fallback sur JWT local si Keycloak est désactivé
 
 Console d'administration : `http://localhost:8080/admin`
@@ -319,9 +332,20 @@ Console d'administration : `http://localhost:8080/admin`
 - [x] IA GOV — 8 modules (optimisation, CS, PS, ressources, gouvernance, corruption, jumeau numérique, IA décisionnelle)
 - [x] GEOS — 14 entités + moteur SNN unifié
 - [x] Phase 2 — Docker Compose, Keycloak SSO, CI/CD GitHub Actions
-- [ ] Phase 3 — React UI, monitoring, Prometheus/Grafana
-- [ ] Phase 4 — Kubernetes, Helm charts, auto-scaling
-- [ ] Phase 5 — Données réelles RDC, modèle prédictif
+- [x] Phase 3 — React UI dashboard, monitoring Prometheus/Grafana
+- [x] Phase 4 — Kubernetes, Helm charts
+- [x] Phase 5 — Données réelles RDC, modèle prédictif ML
+- [x] Options — Exports PDF/Excel, API GraphQL (Strawberry)
+- [x] Workstream 1 — Auth & Audit : Keycloak-first, RBAC 9 rôles, cloisonnement ministère, audit inviolable (hash-chain) — voir [docs/security/KEYCLOAK_RBAC_AUDIT.md](docs/security/KEYCLOAK_RBAC_AUDIT.md)
+- [ ] Workstream 2 — Socle release en validation : implémentation locale terminée, CI distante et restauration staging requises
+- [ ] Workstream 3+ — Observabilité & alerting, données RDC 2026, frontend multi-rôles
+
+## Exploitation PostgreSQL
+
+Les procédures de sauvegarde, de restauration et de test de reprise sont décrites dans
+[docs/architecture/POSTGRES_BACKUP_RESTORE.md](docs/architecture/POSTGRES_BACKUP_RESTORE.md). Les scripts opérateur
+`scripts/backup_postgres.sh` et `scripts/restore_postgres.sh` refusent les opérations incomplètes et ne contiennent
+aucun identifiant de connexion.
 
 ## Licence
 

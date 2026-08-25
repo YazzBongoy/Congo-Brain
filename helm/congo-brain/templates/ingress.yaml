@@ -31,9 +31,17 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ .backend.service.name }}
+                {{- if eq .component "app" }}
+                name: {{ include "congo-brain.appName" $ }}
                 port:
-                  number: {{ .backend.service.port.number }}
+                  number: {{ $.Values.service.app.port }}
+                {{- else if eq .component "frontend" }}
+                name: {{ include "congo-brain.frontendName" $ }}
+                port:
+                  number: {{ $.Values.service.frontend.port }}
+                {{- else }}
+                {{- fail "ingress path component must be app or frontend" }}
+                {{- end }}
           {{- end }}
     {{- end }}
 {{- end }}

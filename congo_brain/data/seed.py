@@ -17,6 +17,7 @@ from datetime import date
 
 from sqlalchemy.orm import Session
 
+from congo_brain.core.config import ENVIRONMENT
 from congo_brain.core.security import hash_password
 from congo_brain.models.budget import Budget, Transaction
 from congo_brain.models.citizen import (
@@ -43,6 +44,9 @@ def seed_all(db: Session) -> None:
 
 
 def _seed_users(db: Session) -> None:
+    # Demo credentials are intentionally unavailable outside local/test environments.
+    if ENVIRONMENT not in {"development", "test"}:
+        return
     if db.query(User).count() > 0:
         return
     users = [

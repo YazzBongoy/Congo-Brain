@@ -36,6 +36,12 @@ htmlcov/
 
 # Databases
 *.db
+backups/
+*.dump
+*.dump.tmp
+*.pgdump
+.pgpass
+pg_service.conf
 
 # Virtual environments
 .venv/

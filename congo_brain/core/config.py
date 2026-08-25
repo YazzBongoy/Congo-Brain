@@ -3,6 +3,7 @@
 import os
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -35,12 +36,41 @@ if ENVIRONMENT in {"production", "staging"} and not KEYCLOAK_ENABLED:
         file=sys.stderr,
     )
     sys.exit(1)
-KEYCLOAK_SERVER_URL: str = os.getenv("KEYCLOAK_SERVER_URL", "http://localhost:8080")
+_keycloak_server_url = os.getenv("KEYCLOAK_SERVER_URL")
+if ENVIRONMENT in {"production", "staging"}:
+    if not _keycloak_server_url:
+        print("FATAL: KEYCLOAK_SERVER_URL must be explicitly set in production and staging.", file=sys.stderr)
+        sys.exit(1)
+    parsed_keycloak_url = urlparse(_keycloak_server_url)
+    if (
+        parsed_keycloak_url.scheme != "https"
+        or not parsed_keycloak_url.netloc
+        or parsed_keycloak_url.username
+        or parsed_keycloak_url.password
+    ):
+        print("FATAL: KEYCLOAK_SERVER_URL must be an absolute HTTPS URL in production and staging.", file=sys.stderr)
+        sys.exit(1)
+KEYCLOAK_SERVER_URL: str = (_keycloak_server_url or "http://localhost:8080").rstrip("/")
+_keycloak_backchannel_url = os.getenv("KEYCLOAK_BACKCHANNEL_URL", KEYCLOAK_SERVER_URL)
+if ENVIRONMENT in {"production", "staging"}:
+    parsed_backchannel_url = urlparse(_keycloak_backchannel_url)
+    if (
+        parsed_backchannel_url.scheme != "https"
+        or not parsed_backchannel_url.netloc
+        or parsed_backchannel_url.username
+        or parsed_backchannel_url.password
+    ):
+        print(
+            "FATAL: KEYCLOAK_BACKCHANNEL_URL must be an absolute HTTPS URL in production and staging.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+KEYCLOAK_BACKCHANNEL_URL: str = _keycloak_backchannel_url.rstrip("/")
 KEYCLOAK_REALM: str = os.getenv("KEYCLOAK_REALM", "congo-brain")
 KEYCLOAK_CLIENT_ID: str = os.getenv("KEYCLOAK_CLIENT_ID", "congo-brain-api")
 KEYCLOAK_CLIENT_SECRET: str = os.getenv("KEYCLOAK_CLIENT_SECRET", "")
-KEYCLOAK_JWKS_URL: str = f"{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/certs"
-KEYCLOAK_TOKEN_URL: str = f"{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/token"
+KEYCLOAK_JWKS_URL: str = f"{KEYCLOAK_BACKCHANNEL_URL}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/certs"
+KEYCLOAK_TOKEN_URL: str = f"{KEYCLOAK_BACKCHANNEL_URL}/realms/{KEYCLOAK_REALM}/protocol/openid-connect/token"
 KEYCLOAK_ISSUER: str = f"{KEYCLOAK_SERVER_URL}/realms/{KEYCLOAK_REALM}"
 
 # AI thresholds

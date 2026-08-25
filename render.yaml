@@ -18,6 +18,16 @@ services:
         value: "true"
       - key: KEYCLOAK_SERVER_URL
         sync: false
+      - key: KEYCLOAK_CLIENT_SECRET
+        sync: false
+      - key: KEYCLOAK_ADMIN_PASSWORD
+        sync: false
+      - key: KEYCLOAK_FRONTEND_URL
+        sync: false
+      - key: KEYCLOAK_API_URL
+        sync: false
+      - key: PUBLIC_REGISTRATION_ENABLED
+        value: "false"
       - key: KEYCLOAK_REALM
         value: congo-brain
       - key: KEYCLOAK_CLIENT_ID
@@ -28,10 +38,11 @@ services:
         value: "75.0"
       - key: RATE_LIMIT_PER_MINUTE
         value: "60"
+    preDeployCommand: alembic upgrade head && bash scripts/keycloak-init.sh
     healthCheckPath: /health
     autoDeploy: true
 
-  - type: pgsql
-    name: congo-brain-db
+databases:
+  - name: congo-brain-db
     databaseName: congo_brain
     plan: starter

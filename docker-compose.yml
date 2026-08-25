@@ -1,19 +1,18 @@
-version: "3.9"
-
 services:
   # ── PostgreSQL ─────────────────────────────────────────────
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
     container_name: congo-brain-db
     restart: unless-stopped
     environment:
       POSTGRES_DB: congo_brain
       POSTGRES_USER: congo
-      POSTGRES_PASSWORD: congo_secret_2026
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U congo -d congo_brain"]
       interval: 10s
@@ -22,21 +21,22 @@ services:
 
   # ── Keycloak ───────────────────────────────────────────────
   keycloak:
-    image: quay.io/keycloak/keycloak:24.0
+    image: quay.io/keycloak/keycloak:24.0@sha256:f8ade94c1d0ad2f2fa7734a455fee5392764f402c43ca35e9af6bf63a2541dc9
     container_name: congo-brain-keycloak
     restart: unless-stopped
     command: start-dev
     environment:
       KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin_secret_2026
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
       KC_DB: postgres
       KC_DB_URL_HOST: postgres
       KC_DB_URL_PORT: 5432
       KC_DB_URL_DATABASE: keycloak
       KC_DB_USERNAME: congo
-      KC_DB_PASSWORD: congo_secret_2026
-      KC_HOSTNAME: localhost
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      KC_HOSTNAME_STRICT: "false"
       KC_HTTP_PORT: 8080
+      KC_HEALTH_ENABLED: "true"
       KC_PROXY: edge
     ports:
       - "8080:8080"
@@ -49,6 +49,41 @@ services:
       timeout: 5s
       retries: 10
 
+  # ── One-shot schema migration (must finish before API startup) ──
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      ENVIRONMENT: development
+      KEYCLOAK_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── One-shot identity reconciliation (must finish before API startup) ──
+  keycloak-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: "no"
+    command: ["bash", "scripts/keycloak-init.sh"]
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD in .env}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?Set KEYCLOAK_CLIENT_SECRET in .env}
+      KEYCLOAK_FRONTEND_URL: http://localhost:3000
+      KEYCLOAK_API_URL: http://localhost:8000
+      CONFIRM_REMOVE_LEGACY_ADMIN: ${CONFIRM_REMOVE_LEGACY_ADMIN:-}
+    depends_on:
+      keycloak:
+        condition: service_healthy
+
   # ── Congo-Brain API ────────────────────────────────────────
   app:
     build:
@@ -57,20 +92,23 @@ services:
     container_name: congo-brain-api
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+psycopg2://congo:congo_secret_2026@postgres:5432/congo_brain
-      SECRET_KEY: super-secret-key-change-in-production
-      KEYCLOAK_SERVER_URL: http://keycloak:8080
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+      KEYCLOAK_ENABLED: "true"
+      # Browser-visible issuer and container-only JWKS backchannel are distinct.
+      KEYCLOAK_SERVER_URL: http://localhost:8080
+      KEYCLOAK_BACKCHANNEL_URL: http://keycloak:8080
       KEYCLOAK_REALM: congo-brain
       KEYCLOAK_CLIENT_ID: congo-brain-api
-      KEYCLOAK_CLIENT_SECRET: ""
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?Set KEYCLOAK_CLIENT_SECRET in .env}
       ENVIRONMENT: development
     ports:
       - "8000:8000"
     depends_on:
-      postgres:
-        condition: service_healthy
-      keycloak:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      keycloak-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -110,7 +148,7 @@ services:
     restart: unless-stopped
     environment:
       GF_SECURITY_ADMIN_USER: admin
-      GF_SECURITY_ADMIN_PASSWORD: congo_grafana_2026
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in .env}
       GF_USERS_ALLOW_SIGN_UP: "false"
     volumes:
       - grafana_data:/var/lib/grafana
