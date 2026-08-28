@@ -12,6 +12,13 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: env.VITE_API_PROXY_TARGET ?? 'http://localhost:8000',
           changeOrigin: true,
+          configure: (proxy) => {
+            proxy.on('proxyReq', (proxyReq) => {
+              if (env.CB_DEV_TOKEN) {
+                proxyReq.setHeader('Authorization', `Bearer ${env.CB_DEV_TOKEN}`)
+              }
+            })
+          },
         },
       },
     },

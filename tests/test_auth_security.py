@@ -166,3 +166,21 @@ def test_keycloak_me_uses_normalized_identity_without_local_user() -> None:
     assert identity["subject"] == "kc-123"
     assert identity["username"] == "keycloak-user"
     assert identity["auth_source"] == "keycloak"
+
+
+def test_local_me_rejects_missing_database_session() -> None:
+    from congo_brain.api.v1 import auth
+
+    with pytest.raises(HTTPException) as exc:
+        auth.get_current_user_info(
+            current_user={
+                "sub": "local-user",
+                "username": "local-user",
+                "role": "executive_viewer",
+                "auth_source": "local",
+            },
+            db=None,
+        )
+
+    assert exc.value.status_code == 500
+    assert exc.value.detail == "Database session unavailable"

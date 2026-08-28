@@ -5,6 +5,10 @@ __pycache__/
 *.so
 venv/
 .env
+.env.local
+.env.*.local
+frontend/.env.local
+.hermes/
 
 # Build artefacts
 build/

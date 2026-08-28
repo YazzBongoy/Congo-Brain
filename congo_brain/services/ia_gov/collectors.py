@@ -202,15 +202,17 @@ class DataCollector:
         self._load_province_data()
 
     def _load_province_data(self) -> None:
+        from congo_brain.data.provinces import BASELINE_PROVINCES
+
+        total_gdp = sum(p["gdp"] for p in BASELINE_PROVINCES)
         self.province_data = {
-            "Kinshasa": {"population": 17.5, "gdp_share": 25.0, "electricity": 55.0, "poverty": 35.0},
-            "Haut-Katanga": {"population": 4.5, "gdp_share": 18.0, "electricity": 30.0, "poverty": 45.0},
-            "Kongo Central": {"population": 6.0, "gdp_share": 10.0, "electricity": 22.0, "poverty": 55.0},
-            "Nord-Kivu": {"population": 8.5, "gdp_share": 8.0, "electricity": 12.0, "poverty": 72.0},
-            "Sud-Kivu": {"population": 6.5, "gdp_share": 5.0, "electricity": 8.0, "poverty": 78.0},
-            "Kasaï": {"population": 5.0, "gdp_share": 3.0, "electricity": 5.0, "poverty": 80.0},
-            "Équateur": {"population": 3.5, "gdp_share": 2.5, "electricity": 7.0, "poverty": 70.0},
-            "Tshopo": {"population": 3.0, "gdp_share": 4.0, "electricity": 10.0, "poverty": 65.0},
+            p["name"]: {
+                "population": p["population"],
+                "gdp_share": round(p["gdp"] / total_gdp * 100, 1),
+                "electricity": float(p["electricity_access"]),
+                "poverty": float(p["poverty_rate"]),
+            }
+            for p in BASELINE_PROVINCES
         }
 
     def get_budget_data(self) -> BudgetData:

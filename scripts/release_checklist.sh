@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+set -Eeuo pipefail
 
 BASE_URL="${BASE_URL:-}"
 ADMIN_TOKEN="${ADMIN_TOKEN:-}"
@@ -56,15 +56,25 @@ else
     echo "SKIP  local-login-disabled check (set KEYCLOAK_MODE=1 for staging/production)"
 fi
 
-register=$(code -X POST -H 'Content-Type: application/json' -d '{}' "${BASE_URL}/api/v1/auth/register")
-[ "$register" = "404" ] && pass "public registration disabled -> 404" || echo "WARN  /auth/register -> ${register} (verify PUBLIC_REGISTRATION_ENABLED=false)"
+probe_suffix="$(date +%s)-$$-${RANDOM}"
+probe_password="$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')"
+register_payload=$(jq -n \
+    --arg username "release-check-${probe_suffix}" \
+    --arg email "release-check-${probe_suffix}@example.com" \
+    --arg password "$probe_password" \
+    '{username: $username, email: $email, password: $password}')
+register=$(code -X POST -H 'Content-Type: application/json' -d "$register_payload" "${BASE_URL}/api/v1/auth/register")
+[ "$register" = "404" ] && pass "public registration disabled -> 404" || fail "registration probe -> ${register} (expected 404; public registration may be enabled)"
+unset probe_password register_payload
 
 if [ -n "$ADMIN_TOKEN" ]; then
-    audit_http=$(curl -s -o /tmp/cb_audit.$$ -w '%{http_code}' --max-time 15 \
-        -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+    audit_file=$(mktemp /tmp/cb_audit.XXXXXX)
+    trap 'rm -f "${audit_file:-}"' EXIT
+    audit_http=$(curl -s -o "$audit_file" -w '%{http_code}' --max-time 15 \
+        -H "Authorization: Bearer $ADMIN_TOKEN" \
         "${BASE_URL}/api/v1/auth/audit-log?limit=1")
     if [ "$audit_http" = "200" ]; then
-        chain=$(jq -r '.chain_valid // .events[0].chain_valid // empty' /tmp/cb_audit.$$ 2>/dev/null)
+        chain=$(jq -r '.chain_valid // .events[0].chain_valid // empty' "$audit_file" 2>/dev/null)
         if [ "$chain" = "true" ]; then
             pass "audit log readable and chain_valid=true"
         else
@@ -73,14 +83,15 @@ if [ -n "$ADMIN_TOKEN" ]; then
     else
         fail "GET /api/v1/auth/audit-log -> ${audit_http} (expected 200 with ADMIN_TOKEN)"
     fi
-    rm -f /tmp/cb_audit.$$
+    rm -f "$audit_file"
+    trap - EXIT
 else
     echo "SKIP  audit-log check (set ADMIN_TOKEN to enable)"
 fi
 
 if [ -n "$PG_DSN" ] && command -v psql >/dev/null 2>&1; then
     for stmt in "UPDATE audit_events SET action='x'" "DELETE FROM audit_events" "TRUNCATE audit_events"; do
-        if psql "$PG_DSN" -v ON_ERROR_STOP=1 -qc "$stmt" >/dev/null 2>&1; then
+        if psql "$PG_DSN" -v ON_ERROR_STOP=1 -qc "BEGIN; ${stmt}; ROLLBACK;" >/dev/null 2>&1; then
             fail "append-only violated: ${stmt%% *}"
         else
             pass "append-only enforced: ${stmt%% *}"

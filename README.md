@@ -91,7 +91,7 @@ Congo-Brain
 
 | Entité | Description | Alimente |
 |---|---|---|
-| `Province` | 5 provinces (Kinshasa, Haut-Katanga, Kongo Central, Nord-Kivu, Sud-Kivu) | Dashboard |
+| `Province` | 26 provinces officielles (découpage 2015) + rattachement aux 11 provinces historiques | Dashboard |
 | `Citizen` | Citoyens avec revenus, éducation, satisfaction | CS |
 | `Company` | Entreprises (Gécamines, SNEL, Vodacom) | PS, DWL |
 | `Ministry` | 10 ministères avec scores de gouvernance | GR, Dashboard |
@@ -116,7 +116,7 @@ Congo-Brain
 | 4 | **NationalResourceEngine** | Suivi des mines, valeur brute/ajoutée/fiscale, scénarios de transformation |
 | 5 | **GovernanceScoreEngine** | Score = 40%Opt + 20%Trans + 20%Perf + 20%Sat, cibles d'amélioration |
 | 6 | **CorruptionDetectionEngine** | 8 types d'anomalies, scoring de risque, résumé par secteur |
-| 7 | **NationalDigitalTwin** | Jumeau numérique de 8 provinces, simulation d'investissements |
+| 7 | **NationalDigitalTwin** | Jumeau numérique des 26 provinces, simulation d'investissements |
 | 8 | **DecisionAI** | Questions en langage naturel → allocations SNN recommandées |
 
 ## API

@@ -8,7 +8,7 @@ with fallback to greedy knapsack if scipy is unavailable.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from congo_brain.models.investment import Investment
@@ -40,7 +40,7 @@ def _try_lp_optimize(
     ]
 
     # All variables are binary (0 or 1)
-    integrality = [1] * n  # 1 = integer variable
+    integrality: list[Literal[1]] = [1] * n  # 1 = integer variable
 
     # Bounds: each variable is 0 or 1
     bounds = Bounds(lb=0, ub=1)

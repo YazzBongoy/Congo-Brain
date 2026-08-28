@@ -1,9 +1,11 @@
 """Authorization tests for ministry-scoped budget access."""
 
+from typing import Any, cast
+
 from fastapi.testclient import TestClient
 
 
-def _create_officer_headers(client: TestClient, auth_headers: dict, ministry: str) -> dict:
+def _create_officer_headers(client: TestClient, auth_headers: dict[str, str], ministry: str) -> dict[str, str]:
     created = client.post(
         "/api/v1/auth/users",
         headers=auth_headers,
@@ -24,7 +26,7 @@ def _create_officer_headers(client: TestClient, auth_headers: dict, ministry: st
     return {"Authorization": f"Bearer {login.json()['access_token']}"}
 
 
-def _create_budget(client: TestClient, headers: dict, ministry: str, sector: str) -> dict:
+def _create_budget(client: TestClient, headers: dict[str, str], ministry: str, sector: str) -> dict[str, Any]:
     response = client.post(
         "/api/v1/budgets",
         headers=headers,
@@ -37,7 +39,7 @@ def _create_budget(client: TestClient, headers: dict, ministry: str, sector: str
         },
     )
     assert response.status_code == 201
-    return response.json()
+    return cast(dict[str, Any], response.json())
 
 
 class TestMinistryBudgetIsolation:

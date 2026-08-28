@@ -4,10 +4,29 @@ import os
 import sys
 from pathlib import Path
 
+from sqlalchemy.engine import URL
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# Database URL — supports both SQLite (development) and PostgreSQL (production)
-DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'congo_brain.db'}")
+# Database URL — supports SQLite, an explicit URL, or separately injected
+# PostgreSQL components (which safely encode reserved password characters).
+def _build_database_url() -> str:
+    explicit_url = os.getenv("DATABASE_URL")
+    if explicit_url:
+        return explicit_url
+    if db_host := os.getenv("DB_HOST"):
+        return URL.create(
+            "postgresql+psycopg2",
+            username=os.environ["DB_USER"],
+            password=os.environ["DB_PASSWORD"],
+            host=db_host,
+            port=int(os.getenv("DB_PORT", "5432")),
+            database=os.environ["DB_NAME"],
+        ).render_as_string(hide_password=False)
+    return f"sqlite:///{BASE_DIR / 'congo_brain.db'}"
+
+
+DATABASE_URL: str = _build_database_url()
 IS_POSTGRES: bool = DATABASE_URL.startswith("postgresql")
 
 # Security

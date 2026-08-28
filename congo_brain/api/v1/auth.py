@@ -87,7 +87,7 @@ def register(body: UserCreate, db: Session = Depends(get_db)) -> User:
 @router.get("/me", response_model=CurrentIdentityOut)
 def get_current_user_info(
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: Session | None = Depends(get_db),
 ) -> dict:
     if current_user.get("auth_source") == "keycloak":
         return {
@@ -99,6 +99,8 @@ def get_current_user_info(
             "auth_source": "keycloak",
             "local_user_id": None,
         }
+    if db is None:
+        raise HTTPException(status_code=500, detail="Database session unavailable")
     user = db.query(User).filter(User.username == current_user["sub"]).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

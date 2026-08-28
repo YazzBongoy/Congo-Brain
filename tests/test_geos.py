@@ -293,7 +293,7 @@ class TestGEOSAPI:
     def test_geos_provinces_kinshasa(self, client):
         r = client.get("/api/v1/geos/provinces/Kinshasa")
         assert r.status_code == 200
-        assert r.json()["population"] == 17.5
+        assert r.json()["population"] == 17.0
 
     def test_geos_provinces_not_found(self, client):
         r = client.get("/api/v1/geos/provinces/Inexistante")

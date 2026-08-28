@@ -1,7 +1,6 @@
 """Tests for the anomaly detection engine."""
 
-from unittest.mock import MagicMock
-
+from congo_brain.models.budget import Budget, Transaction
 from congo_brain.services.ai.anomaly_detector import detect_anomalies
 
 
@@ -11,17 +10,19 @@ def _make_transaction(
     amount: float = 1000.0,
     description: str = "Paiement normal",
     reference_number: str = "REF-001",
-) -> MagicMock:
-    t = MagicMock()
-    t.id = txn_id
-    t.budget_id = budget_id
-    t.amount = amount
-    t.description = description
-    t.reference_number = reference_number
-    t.is_anomaly = False
-    t.anomaly_score = 0.0
-    t.anomaly_reason = None
-    return t
+) -> Transaction:
+    transaction = Transaction(
+        budget_id=budget_id,
+        amount=amount,
+        description=description,
+        transaction_type="expense",
+        reference_number=reference_number,
+        is_anomaly=False,
+        anomaly_score=0.0,
+        anomaly_reason=None,
+    )
+    transaction.id = txn_id
+    return transaction
 
 
 def _make_budget(
@@ -29,13 +30,16 @@ def _make_budget(
     allocated: float = 1_000_000.0,
     spent: float = 500_000.0,
     ministry: str = "Test Ministry",
-) -> MagicMock:
-    b = MagicMock()
-    b.id = budget_id
-    b.allocated_amount = allocated
-    b.spent_amount = spent
-    b.ministry = ministry
-    return b
+) -> Budget:
+    budget = Budget(
+        ministry=ministry,
+        sector="Test",
+        allocated_amount=allocated,
+        spent_amount=spent,
+        fiscal_year=2026,
+    )
+    budget.id = budget_id
+    return budget
 
 
 class TestAnomalyDetector:
