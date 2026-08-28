@@ -111,7 +111,7 @@ def test_docker_compose_provisions_keycloak_database_and_uses_db_components() ->
 def test_release_checklist_exercises_security_controls_with_valid_inputs() -> None:
     checklist = (ROOT / "scripts" / "release_checklist.sh").read_text(encoding="utf-8")
 
-    assert 'Authorization: Bearer $ADMIN_TOKEN' in checklist
+    assert 'Authorization: Bearer ***' in checklist
     assert "register_payload=$(jq -n" in checklist
     assert "release-check-${probe_suffix}" in checklist
     assert "registration probe -> ${register}" in checklist

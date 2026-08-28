@@ -21,6 +21,5 @@ def test_user_role_column_fits_every_supported_role() -> None:
 def test_alembic_widens_existing_user_role_column() -> None:
     migrations = "\n".join(path.read_text(encoding="utf-8") for path in MIGRATIONS.glob("*.py"))
 
-    assert "op.alter_column(" in migrations
-    assert '"users", "role"' in migrations
+    assert 'op.alter_column("users", "role"' in migrations
     assert "sa.String(length=64)" in migrations

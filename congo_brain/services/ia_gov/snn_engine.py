@@ -17,7 +17,6 @@ from dataclasses import dataclass, field
 
 from congo_brain.data.provinces import BASELINE_PROVINCES
 
-
 @dataclass
 class SNNAggregate:
     """Agrégation du SNN à partir des 14 entités."""
