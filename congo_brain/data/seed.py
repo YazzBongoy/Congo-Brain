@@ -100,16 +100,17 @@ def _seed_users(db: Session) -> None:
 
 
 # ------------------------------------------------------------------
-# BudgetGuard -- Real 2025 Loi de Finances data
-# Budget total initial: 51 553,5 Mds CDF (~17,5 Mds USD)
-# Budget rectificatif: 50 691,8 Mds CDF (~17,2 Mds USD)
-# Taux de change moyen: 2 859,2 CDF/USD
+# BudgetGuard -- Real DRC Loi de Finances data (2025, 2026, 2027)
+# Budget 2025: 50 691,8 Mds CDF (~17,2 Mds USD)
+# Budget 2026 (Rectificatif): 50 866,35 Mds CDF (~18,5 - 19 Mds USD)
+# Budget 2027 (PLF): ~56 929 a 57 500 Mds CDF (~24,8 Mds USD)
 # ------------------------------------------------------------------
 def _seed_budgets(db: Session) -> None:
     if db.query(Budget).count() > 0:
         return
 
     budgets = [
+        # === EXERCICE 2025 ===
         # -- Revenue agencies (regies financieres) --
         Budget(
             ministry="DGI - Direction Generale des Impots",
@@ -218,11 +219,104 @@ def _seed_budgets(db: Session) -> None:
             fiscal_year=2025,
         ),
         Budget(
-            ministry=("Ministere du Plan et Suivi de la Revolution de la Modernite"),
+            ministry="Ministere du Plan et Suivi de la Revolution de la Modernite",
             sector="PDL-145 Territoires",
             allocated_amount=2_200_000_000_000,
             spent_amount=1_600_000_000_000,
             fiscal_year=2025,
+        ),
+        # === EXERCICE 2026 (Loi Rectificative / Collectif) ===
+        Budget(
+            ministry="DGI - Direction Generale des Impots",
+            sector="Recettes Fiscales",
+            allocated_amount=17_200_000_000_000,
+            spent_amount=16_800_000_000_000,
+            fiscal_year=2026,
+        ),
+        Budget(
+            ministry="DGDA - Direction Generale des Douanes et Accises",
+            sector="Recettes Douanieres",
+            allocated_amount=6_693_000_000_000,
+            spent_amount=6_100_000_000_000,
+            fiscal_year=2026,
+        ),
+        Budget(
+            ministry="DGRAD - Recettes Administratives",
+            sector="Recettes Non Fiscales",
+            allocated_amount=4_800_000_000_000,
+            spent_amount=4_200_000_000_000,
+            fiscal_year=2026,
+        ),
+        Budget(
+            ministry="Ministere de la Defense Nationale",
+            sector="Defense et Securite",
+            allocated_amount=14_500_000_000_000,
+            spent_amount=14_200_000_000_000,
+            fiscal_year=2026,
+        ),
+        Budget(
+            ministry="Ministere de l'EPST",
+            sector="Gratuite de l'Enseignement",
+            allocated_amount=5_400_000_000_000,
+            spent_amount=5_200_000_000_000,
+            fiscal_year=2026,
+        ),
+        Budget(
+            ministry="Ministere de la Sante Publique",
+            sector="Couverture Sante Universelle",
+            allocated_amount=3_300_000_000_000,
+            spent_amount=3_000_000_000_000,
+            fiscal_year=2026,
+        ),
+        # === EXERCICE 2027 (Projet de Loi de Finances - PLF) ===
+        Budget(
+            ministry="DGI - Direction Generale des Impots",
+            sector="Recettes Fiscales",
+            allocated_amount=19_500_000_000_000,
+            spent_amount=0,
+            fiscal_year=2027,
+        ),
+        Budget(
+            ministry="DGDA - Direction Generale des Douanes et Accises",
+            sector="Recettes Douanieres",
+            allocated_amount=7_800_000_000_000,
+            spent_amount=0,
+            fiscal_year=2027,
+        ),
+        Budget(
+            ministry="DGRAD - Recettes Administratives",
+            sector="Recettes Non Fiscales",
+            allocated_amount=5_900_000_000_000,
+            spent_amount=0,
+            fiscal_year=2027,
+        ),
+        Budget(
+            ministry="Ministere de la Defense Nationale",
+            sector="Defense et Securite",
+            allocated_amount=16_000_000_000_000,
+            spent_amount=0,
+            fiscal_year=2027,
+        ),
+        Budget(
+            ministry="Ministere de l'EPST",
+            sector="Gratuite de l'Enseignement",
+            allocated_amount=6_000_000_000_000,
+            spent_amount=0,
+            fiscal_year=2027,
+        ),
+        Budget(
+            ministry="Ministere de la Sante Publique",
+            sector="Couverture Sante Universelle",
+            allocated_amount=3_800_000_000_000,
+            spent_amount=0,
+            fiscal_year=2027,
+        ),
+        Budget(
+            ministry="Ministere des Infrastructures et Travaux Publics",
+            sector="Routes et Ouvrages",
+            allocated_amount=5_200_000_000_000,
+            spent_amount=0,
+            fiscal_year=2027,
         ),
     ]
     db.add_all(budgets)
