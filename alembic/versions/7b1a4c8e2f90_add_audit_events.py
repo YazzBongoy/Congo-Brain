@@ -19,6 +19,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Create the hash-chained audit log and PostgreSQL immutability guard."""
+    if op.get_bind().dialect.name == "postgresql":
+        # SQLite cannot ALTER COLUMN TYPE; the model default (String(64)) is only enforced on PG.
+        op.alter_column("users", "role", existing_type=sa.String(length=20), type_=sa.String(length=64))
     op.create_table(
         "audit_events",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -86,3 +89,5 @@ def downgrade() -> None:
     op.drop_index("ix_audit_events_action", table_name="audit_events")
     op.drop_index("ix_audit_events_created_at", table_name="audit_events")
     op.drop_table("audit_events")
+    if bind.dialect.name == "postgresql":
+        op.alter_column("users", "role", existing_type=sa.String(length=64), type_=sa.String(length=20))
