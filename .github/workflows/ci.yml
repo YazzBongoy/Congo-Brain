@@ -91,9 +91,71 @@ jobs:
       - name: Build frontend
         run: npm run build
 
+  release-config:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.3
+
+      - name: Lint Helm chart
+        run: helm lint helm/congo-brain --strict
+
+      - name: Render Kubernetes manifests
+        # The chart guards KEYCLOAK_SERVER_URL with `required` (fail-fast, intentional:
+        # a production render must never ship an empty IdP URL). Render with a
+        # non-secret placeholder so the templates are still exercised in CI.
+        run: helm template congo-brain helm/congo-brain --set env.KEYCLOAK_SERVER_URL=https://keycloak.invalid/realms/congo-brain
+
+      - name: Verify the Keycloak guard rejects an empty server URL
+        run: |
+          set -euo pipefail
+          if helm template congo-brain helm/congo-brain > /dev/null 2>&1; then
+            echo "::error::chart rendered with an empty KEYCLOAK_SERVER_URL; the required guard is broken"
+            exit 1
+          fi
+          echo "Keycloak required guard OK: empty server URL is rejected"
+
+      - name: Version coherence across release surfaces
+        run: |
+          set -euo pipefail
+          app_version=$(grep -oP '(?<=^__version__ = ")[^"]+' congo_brain/__init__.py)
+          chart_version=$(grep -oP '(?<=^appVersion: ")[^"]+' helm/congo-brain/Chart.yaml)
+          py_version=$(grep -oP '(?<=^version = ")[^"]+' pyproject.toml)
+
+          if [ "$app_version" != "$chart_version" ]; then
+            echo "::error::appVersion ($chart_version) != __version__ ($app_version)"
+            exit 1
+          fi
+          if [ "$py_version" != "$app_version" ]; then
+            echo "::error::pyproject version ($py_version) != __version__ ($app_version)"
+            exit 1
+          fi
+          echo "Version coherence OK: $app_version"
+
+      - name: Render deployment config consistency
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import pathlib, sys
+          import yaml
+
+          compose = yaml.safe_load(pathlib.Path("docker-compose.yml").read_text())
+          services = compose.get("services", {})
+          required = {"app", "postgres", "keycloak"}
+          missing = required - set(services)
+          if missing:
+              print(f"::error::docker-compose.yml missing services: {sorted(missing)}", file=sys.stderr)
+              sys.exit(1)
+          print(f"docker-compose services OK: {sorted(required)}")
+          PY
+
   docker:
     runs-on: ubuntu-latest
-    needs: [test, frontend]
+    needs: [test, frontend, release-config]
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: read

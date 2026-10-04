@@ -5,6 +5,7 @@ ETD, ménages, entreprises, entreprises publiques, secteurs extractifs, infrastr
 programmes et projets.
 
 ## Axes
+
 1. mobilisation des recettes internes ;
 2. allocation et exécution budgétaires ;
 3. qualité de la dépense ;
@@ -17,4 +18,5 @@ programmes et projets.
 10. transparence et contrôle.
 
 ## Distinction essentielle
+
 Prévision ≠ crédit budgétaire ≠ engagement ≠ liquidation ≠ ordonnancement ≠ paiement ≠ résultat.

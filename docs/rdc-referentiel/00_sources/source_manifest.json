@@ -3,7 +3,12 @@
   "scope": "RDC économie publique fiscalité budget gouvernance",
   "sources": [
     [
-      "Ministère du Budget",
+      "Ministère du Budget - PLF 2027",
+      "https://budget.gouv.cd/",
+      "P1"
+    ],
+    [
+      "Ministère du Budget - Budget 2026",
       "https://budget.gouv.cd/budget-2026/",
       "P1"
     ],

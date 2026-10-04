@@ -5,13 +5,15 @@ Elle encadre la passation, l'exécution, le contrôle et le contentieux des marc
 fournitures, services et prestations intellectuelles.
 
 ## Entités
+
 ContractingAuthority, ProcurementPlan, Tender, Bid, Supplier, Contract, Amendment,
 Payment, Delivery, PerformanceIndicator, ControlEvent.
 
 ## Indicateurs
+
 Concurrence, délais, écart montant prévu/contractuel, avenants, concentration fournisseurs,
 exécution physique, exécution financière, paiements et performance.
 
 Sources :
 https://armp-rdc.cd/the-future-of-possible-6/
-https://www.armp-rdc.cd/wp-content/uploads/2021/12/Lois-relative-aux-marchs-publicsx.pdf
+<https://www.armp-rdc.cd/wp-content/uploads/2021/12/Lois-relative-aux-marchs-publicsx.pdf>
