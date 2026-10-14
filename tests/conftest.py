@@ -1,6 +1,23 @@
-"""Shared test fixtures for Congo-Brain."""
+"""Shared test fixtures for Congo-Brain.
+
+Test isolation
+--------------
+The suite used to run against a single repo-relative file (``test_congo_brain.db``)
+that every pytest process shared. Two processes — a re-run left running, a CI job, or
+two agents working in the same checkout — then issued ``CREATE TABLE`` / ``DROP TABLE``
+against the same SQLite file concurrently, producing non-deterministic failures such as
+``sqlite3.OperationalError: table X already exists`` and ``no such table: X``.
+
+Each pytest session now gets its own throwaway SQLite file under the system temp
+directory. pytest-xdist workers are separate processes, so the ``os.getpid()`` suffix
+also isolates them. ``DATABASE_URL`` is set before the application is imported so both
+the app engine (``congo_brain.core.database``) and the test engine point at the same
+private file. The file (and its temp directory) is deleted at the end of the session.
+"""
 
 import os
+import shutil
+import tempfile
 from typing import Generator
 
 import pytest
@@ -8,7 +25,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-os.environ["DATABASE_URL"] = "sqlite:///test_congo_brain.db"
+_TEST_DB_DIR = tempfile.mkdtemp(prefix="congo_brain_pytest_")
+_TEST_DB_PATH = os.path.join(_TEST_DB_DIR, f"test_congo_brain_{os.getpid()}.db")
+
+os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB_PATH}"
 os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
 os.environ["ENVIRONMENT"] = "development"
 os.environ["PUBLIC_REGISTRATION_ENABLED"] = "true"
@@ -18,9 +38,17 @@ from congo_brain.api.server import app  # noqa: E402
 from congo_brain.core.database import Base, get_db  # noqa: E402
 from congo_brain.models.user import User  # noqa: E402
 
-TEST_DATABASE_URL = "sqlite:///test_congo_brain.db"
+TEST_DATABASE_URL = os.environ["DATABASE_URL"]
 engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
 TestSession = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _isolated_test_database() -> Generator[None, None, None]:
+    """Remove the private session database file once the session finishes."""
+    yield
+    engine.dispose()
+    shutil.rmtree(_TEST_DB_DIR, ignore_errors=True)
 
 
 @pytest.fixture(autouse=True)
