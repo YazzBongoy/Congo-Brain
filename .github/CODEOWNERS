@@ -1,0 +1,37 @@
+# MIASE SARL code ownership — Congo-Brain / GEOS
+# See the Shared Engineering Baseline v1 §2 (MIAA-3) for the review rules.
+#
+# CTO-mandatory review applies to: public API/schema contracts, auth/security
+# boundaries, DB migrations, and CI/release paths.
+#
+# Reviewer identity for the CTO role is @ASCATSARL. Replace it with a dedicated
+# @MIASE-SARL/cto team once that team or a CTO bot account exists.
+
+# Default owner for the repository.
+*                                   @YazzBongoy
+
+# --- API / schema contracts (CTO review required) ---
+/congo_brain/api/                   @ASCATSARL
+/congo_brain/schemas/               @ASCATSARL
+/congo_brain/models/                @ASCATSARL
+
+# --- Auth / security boundaries (CTO review required) ---
+/congo_brain/core/                  @ASCATSARL
+/congo_brain/services/              @ASCATSARL
+
+# --- DB migrations (CTO review required) ---
+/alembic/                           @ASCATSARL
+/alembic.ini                        @ASCATSARL
+
+# --- CI / release / deploy paths (CTO review required) ---
+/.github/workflows/                 @ASCATSARL
+/.github/CODEOWNERS                 @ASCATSARL
+/helm/                              @ASCATSARL
+/docker-compose.yml                 @ASCATSARL
+/docker-compose.prod.yml            @ASCATSARL
+/Dockerfile                         @ASCATSARL
+/render.yaml                        @ASCATSARL
+/scripts/                           @ASCATSARL
+/pyproject.toml                     @ASCATSARL
+/requirements.txt                   @ASCATSARL
+/requirements-dev.txt               @ASCATSARL
