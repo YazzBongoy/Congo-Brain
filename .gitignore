@@ -4,7 +4,13 @@ __pycache__/
 *.py[cod]
 *.so
 venv/
+.venv/
 .env
+
+# Test / type-checker caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Build artefacts
 build/
@@ -36,9 +42,11 @@ htmlcov/
 
 # Databases
 *.db
+# Root-level local/test SQLite artifacts (never commit these)
+/congo_brain.db
+/test_congo_brain.db
 
 # Virtual environments
-.venv/
 node_modules/
 frontend/dist/
 
