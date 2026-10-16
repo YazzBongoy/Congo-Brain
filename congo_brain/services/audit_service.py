@@ -2,12 +2,25 @@
 
 import hashlib
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from congo_brain.models.audit import AuditEvent
+
+
+def _utcnow() -> datetime:
+    """Naive UTC ``now``.
+
+    ``datetime.utcnow()`` is deprecated (Python 3.12+). The audit chain persists and
+    hashes ``created_at`` through a timezone-naive ``DateTime`` column and re-derives the
+    hash from the stored value, so the replacement must keep naive-UTC semantics: a
+    timezone-aware value would append an offset to ``isoformat()`` and break verification
+    of every existing row. Dropping ``tzinfo`` after ``now(timezone.utc)`` preserves the
+    exact stored representation.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 GENESIS_HASH = "0" * 64
 REDACTED = "[REDACTED]"
@@ -113,7 +126,7 @@ def record_audit_event(
         db.execute(text("SELECT pg_advisory_xact_lock(20260820)"))
     previous = db.query(AuditEvent).order_by(AuditEvent.id.desc()).first()
     previous_hash = previous.event_hash if previous else GENESIS_HASH
-    created_at = datetime.utcnow()
+    created_at = _utcnow()
     detail_json = json.dumps(_redact_detail(detail or {}), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     actor_subject = str(current_user.get("sub", "unknown"))
     actor_username = str(current_user.get("username") or current_user.get("sub") or "unknown")
