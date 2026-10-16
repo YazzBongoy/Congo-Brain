@@ -1,11 +1,16 @@
 """Append-only, hash-chained privileged-operation audit events."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import DateTime, Integer, String, Text, event
 from sqlalchemy.orm import Mapped, Mapper, mapped_column
 
 from congo_brain.core.database import Base
+
+
+def _utcnow() -> datetime:
+    """Naive UTC default for ``created_at`` (``datetime.utcnow()`` is deprecated)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class AuditEvent(Base):
@@ -22,7 +27,7 @@ class AuditEvent(Base):
     detail: Mapped[str] = mapped_column(Text, nullable=False, default="{}")
     previous_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     event_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow, nullable=False)
 
 
 def _reject_mutation(_mapper: Mapper, _connection: object, _target: AuditEvent) -> None:
