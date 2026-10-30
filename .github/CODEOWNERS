@@ -1,37 +1,28 @@
-# MIASE SARL code ownership — Congo-Brain / GEOS
-# See the Shared Engineering Baseline v1 §2 (MIAA-3) for the review rules.
-#
-# CTO-mandatory review applies to: public API/schema contracts, auth/security
-# boundaries, DB migrations, and CI/release paths.
-#
-# Reviewer identity for the CTO role is @ASCATSARL. Replace it with a dedicated
-# @MIASE-SARL/cto team once that team or a CTO bot account exists.
+# MIASE shared engineering baseline (MIAA-13).
+# CTO review (@YazzBongoy) is mandatory for: public API/schema contracts,
+# auth/authorization boundaries, DB migrations, security-sensitive code,
+# and release/CI pipeline paths (baseline section 2).
+# GitHub username: repo owner acts as CTO reviewer. Revisions via CTO sign-off.
 
-# Default owner for the repository.
-*                                   @YazzBongoy
+# Public API + schema/data contracts
+/congo_brain/api/ @YazzBongoy
+/congo_brain/schemas/ @YazzBongoy
+/congo_brain/models/ @YazzBongoy
+/congo_brain/api/graphql.py @YazzBongoy
 
-# --- API / schema contracts (CTO review required) ---
-/congo_brain/api/                   @ASCATSARL
-/congo_brain/schemas/               @ASCATSARL
-/congo_brain/models/                @ASCATSARL
+# Auth / security boundaries
+/congo_brain/core/security.py @YazzBongoy
+/congo_brain/core/rbac.py @YazzBongoy
+/congo_brain/core/config.py @YazzBongoy
+/congo_brain/services/ @YazzBongoy
 
-# --- Auth / security boundaries (CTO review required) ---
-/congo_brain/core/                  @ASCATSARL
-/congo_brain/services/              @ASCATSARL
+# DB migrations
+/alembic/ @YazzBongoy
+alembic.ini @YazzBongoy
 
-# --- DB migrations (CTO review required) ---
-/alembic/                           @ASCATSARL
-/alembic.ini                        @ASCATSARL
-
-# --- CI / release / deploy paths (CTO review required) ---
-/.github/workflows/                 @ASCATSARL
-/.github/CODEOWNERS                 @ASCATSARL
-/helm/                              @ASCATSARL
-/docker-compose.yml                 @ASCATSARL
-/docker-compose.prod.yml            @ASCATSARL
-/Dockerfile                         @ASCATSARL
-/render.yaml                        @ASCATSARL
-/scripts/                           @ASCATSARL
-/pyproject.toml                     @ASCATSARL
-/requirements.txt                   @ASCATSARL
-/requirements-dev.txt               @ASCATSARL
+# CI / release paths
+/.github/ @YazzBongoy
+/helm/ @YazzBongoy
+/Dockerfile @YazzBongoy
+/docker-compose.yml @YazzBongoy
+/render.yaml @YazzBongoy
