@@ -5,24 +5,24 @@
 # GitHub username: repo owner acts as CTO reviewer. Revisions via CTO sign-off.
 
 # Public API + schema/data contracts
-/congo_brain/api/ @YazzBongoy
-/congo_brain/schemas/ @YazzBongoy
-/congo_brain/models/ @YazzBongoy
-/congo_brain/api/graphql.py @YazzBongoy
+/congo_brain/api/ @YazzBongoy @ASCATSARL
+/congo_brain/schemas/ @YazzBongoy @ASCATSARL
+/congo_brain/models/ @YazzBongoy @ASCATSARL
+/congo_brain/api/graphql.py @YazzBongoy @ASCATSARL
 
 # Auth / security boundaries
-/congo_brain/core/security.py @YazzBongoy
-/congo_brain/core/rbac.py @YazzBongoy
-/congo_brain/core/config.py @YazzBongoy
-/congo_brain/services/ @YazzBongoy
+/congo_brain/core/security.py @YazzBongoy @ASCATSARL
+/congo_brain/core/rbac.py @YazzBongoy @ASCATSARL
+/congo_brain/core/config.py @YazzBongoy @ASCATSARL
+/congo_brain/services/ @YazzBongoy @ASCATSARL
 
 # DB migrations
-/alembic/ @YazzBongoy
-alembic.ini @YazzBongoy
+/alembic/ @YazzBongoy @ASCATSARL
+alembic.ini @YazzBongoy @ASCATSARL
 
 # CI / release paths
-/.github/ @YazzBongoy
-/helm/ @YazzBongoy
-/Dockerfile @YazzBongoy
-/docker-compose.yml @YazzBongoy
-/render.yaml @YazzBongoy
+/.github/ @YazzBongoy @ASCATSARL
+/helm/ @YazzBongoy @ASCATSARL
+/Dockerfile @YazzBongoy @ASCATSARL
+/docker-compose.yml @YazzBongoy @ASCATSARL
+/render.yaml @YazzBongoy @ASCATSARL
