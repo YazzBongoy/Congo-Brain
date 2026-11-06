@@ -46,6 +46,10 @@ htmlcov/
 /congo_brain.db
 /test_congo_brain.db
 
+# Scratch directories from repository cleanup (never commit these)
+.backup_before_cleanup/
+.cleanup_logs/
+
 # Virtual environments
 node_modules/
 frontend/dist/
