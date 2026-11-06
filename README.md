@@ -196,7 +196,7 @@ GET  /roles                        # Liste des rôles
 
 ## Technologies
 
-- **Python 3.11+**
+- **Python 3.12+**
 - **FastAPI** — API REST asynchrone
 - **SQLAlchemy 2.x** — ORM avec migrations Alembic
 - **PostgreSQL 16** — base de données

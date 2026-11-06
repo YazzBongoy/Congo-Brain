@@ -29,7 +29,7 @@ ENVIRONMENT=development
 
 ## CI/CD (GitHub Actions)
 Pipeline `.github/workflows/ci.yml`:
-1. **Test** — pytest sur Python 3.11/3.12/3.13
+1. **Test** — ruff, mypy et pytest sur Python 3.12 (version de référence, alignée sur le Dockerfile)
 2. **Build Docker** — multi-platform (amd64/arm64)
 3. **Push GHCR** — image `ghcr.io/yazzbongoy/congo-brain`
 4. **Tag auto** — version basée sur date

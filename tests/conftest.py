@@ -18,12 +18,23 @@ private file. The file (and its temp directory) is deleted at the end of the ses
 import os
 import shutil
 import tempfile
+from pathlib import Path
 from typing import Generator
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+
+_REPO_ROOT = Path.cwd()
+_REPO_DATABASE_NAMES = ("congo_brain.db", "test_congo_brain.db")
+# Snapshot taken when the session starts, before any test (or the app) can write a
+# database. The guardrail test compares against this baseline so a developer who ran
+# the app locally (a pre-existing root-level ``.db`` file) is not blamed for it.
+_REPO_DATABASE_BASELINE = {
+    name: (_REPO_ROOT / name).stat().st_mtime_ns if (_REPO_ROOT / name).exists() else None
+    for name in _REPO_DATABASE_NAMES
+}
 
 _TEST_DB_DIR = tempfile.mkdtemp(prefix="congo_brain_pytest_")
 _TEST_DB_PATH = os.path.join(_TEST_DB_DIR, f"test_congo_brain_{os.getpid()}.db")
@@ -41,6 +52,12 @@ from congo_brain.models.user import User  # noqa: E402
 TEST_DATABASE_URL = os.environ["DATABASE_URL"]
 engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
 TestSession = sessionmaker(bind=engine, autocommit=False, autoflush=False)
+
+
+@pytest.fixture(scope="session")
+def repo_database_baseline() -> dict[str, int | None]:
+    """Root-level SQLite files that already existed when this pytest session started."""
+    return dict(_REPO_DATABASE_BASELINE)
 
 
 @pytest.fixture(scope="session", autouse=True)
