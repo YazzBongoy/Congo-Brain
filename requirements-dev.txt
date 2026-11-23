@@ -3,4 +3,6 @@ httpx>=0.27.0
 ruff>=0.3.0
 mypy>=1.8.0
 types-requests>=2.31.0
+scipy-stubs
+types-openpyxl
 pip-audit>=2.7.0

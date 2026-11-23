@@ -6,6 +6,10 @@ __pycache__/
 venv/
 .venv/
 .env
+.env.local
+.env.*.local
+frontend/.env.local
+.hermes/
 
 # Test / type-checker caches
 .pytest_cache/

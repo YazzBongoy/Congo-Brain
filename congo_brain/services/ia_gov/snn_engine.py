@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from congo_brain.data.provinces import BASELINE_PROVINCES
+
 
 @dataclass
 class SNNAggregate:
@@ -125,110 +127,7 @@ class SNNOptimizationEngine:
     def load_drc_baseline(self) -> None:
         """Load DRC baseline data for all 14 entities — real statistics 2024-2025."""
         self.provinces = [
-            {
-                "name": "Kinshasa",
-                "population": 17.5,
-                "gdp": 13750,
-                "poverty_rate": 35,
-                "electricity_access": 55,
-                "water_access": 70,
-                "governance_score": 50,
-                "area_km2": 9965,
-                "literacy_rate": 85,
-                "internet_access": 32,
-                "security_index": 55,
-            },
-            {
-                "name": "Haut-Katanga",
-                "population": 4.5,
-                "gdp": 9900,
-                "poverty_rate": 45,
-                "electricity_access": 30,
-                "water_access": 45,
-                "governance_score": 45,
-                "area_km2": 132463,
-                "literacy_rate": 72,
-                "internet_access": 15,
-                "security_index": 60,
-            },
-            {
-                "name": "Kongo Central",
-                "population": 6.0,
-                "gdp": 5500,
-                "poverty_rate": 55,
-                "electricity_access": 22,
-                "water_access": 40,
-                "governance_score": 38,
-                "area_km2": 89974,
-                "literacy_rate": 68,
-                "internet_access": 12,
-                "security_index": 50,
-            },
-            {
-                "name": "Nord-Kivu",
-                "population": 8.5,
-                "gdp": 4400,
-                "poverty_rate": 72,
-                "electricity_access": 12,
-                "water_access": 30,
-                "governance_score": 30,
-                "area_km2": 59483,
-                "literacy_rate": 62,
-                "internet_access": 10,
-                "security_index": 25,
-            },
-            {
-                "name": "Sud-Kivu",
-                "population": 6.5,
-                "gdp": 2750,
-                "poverty_rate": 78,
-                "electricity_access": 8,
-                "water_access": 25,
-                "governance_score": 28,
-                "area_km2": 65070,
-                "literacy_rate": 58,
-                "internet_access": 8,
-                "security_index": 22,
-            },
-            {
-                "name": "Kasaï",
-                "population": 5.5,
-                "gdp": 2200,
-                "poverty_rate": 68,
-                "electricity_access": 10,
-                "water_access": 35,
-                "governance_score": 32,
-                "area_km2": 199567,
-                "literacy_rate": 55,
-                "internet_access": 5,
-                "security_index": 35,
-            },
-            {
-                "name": "Équateur",
-                "population": 3.5,
-                "gdp": 1800,
-                "poverty_rate": 65,
-                "electricity_access": 15,
-                "water_access": 40,
-                "governance_score": 35,
-                "area_km2": 148331,
-                "literacy_rate": 60,
-                "internet_access": 7,
-                "security_index": 40,
-            },
-            {
-                "name": "Tshopo",
-                "population": 3.0,
-                "gdp": 3200,
-                "poverty_rate": 50,
-                "electricity_access": 20,
-                "water_access": 50,
-                "governance_score": 42,
-                "area_km2": 199567,
-                "literacy_rate": 70,
-                "internet_access": 10,
-                "security_index": 45,
-            },
+            dict(p) for p in BASELINE_PROVINCES
         ]
 
         self.companies = [

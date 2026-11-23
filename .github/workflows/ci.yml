@@ -50,7 +50,7 @@ jobs:
         run: ruff check congo_brain/ alembic/ tests/
 
       - name: Type check
-        run: mypy congo_brain/ --ignore-missing-imports
+        run: mypy .
 
       - name: Unit and API tests
         env:
