@@ -19,8 +19,13 @@ def test_database_url_points_at_a_private_per_process_file() -> None:
     assert database_path.parent != Path.cwd(), database_path
 
 
-def test_no_shared_repo_database_file_is_created() -> None:
-    # The application defaults to ``congo_brain.db`` and the old conftest used
-    # ``test_congo_brain.db``; neither may be created in the working tree.
-    assert not (Path.cwd() / "congo_brain.db").exists()
-    assert not (Path.cwd() / "test_congo_brain.db").exists()
+def test_no_shared_repo_database_file_is_created(repo_database_baseline: dict[str, int | None]) -> None:
+    # Only files *created by this session* are a violation. A root-level database that
+    # predates the run (a developer ran the app locally) is irrelevant to isolation.
+    for name, baseline_mtime_ns in repo_database_baseline.items():
+        path = Path.cwd() / name
+        if baseline_mtime_ns is None:
+            assert not path.exists(), f"{name} was created in the working tree during the test run"
+        else:
+            assert path.exists(), f"{name} disappeared during the test run"
+            assert path.stat().st_mtime_ns == baseline_mtime_ns, f"{name} was modified during the test run"
