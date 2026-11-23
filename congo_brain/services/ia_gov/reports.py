@@ -175,6 +175,7 @@ def generate_snn_excel(engine, predictions: dict | None = None) -> bytes:
 
     # Sheet 1: SNN Summary
     ws = wb.active
+    assert ws is not None
     ws.title = "SNN Summary"
     agg = engine.compute_snn()
 

@@ -6,6 +6,10 @@ __pycache__/
 venv/
 .venv/
 .env
+.env.local
+.env.*.local
+frontend/.env.local
+.hermes/
 
 # Test / type-checker caches
 .pytest_cache/
@@ -45,6 +49,10 @@ htmlcov/
 # Root-level local/test SQLite artifacts (never commit these)
 /congo_brain.db
 /test_congo_brain.db
+
+# Scratch directories from repository cleanup (never commit these)
+.backup_before_cleanup/
+.cleanup_logs/
 
 # Virtual environments
 node_modules/

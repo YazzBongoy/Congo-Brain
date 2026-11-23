@@ -31,7 +31,7 @@ GEOS est une plateforme de gouvernance IA basée sur une architecture modulaire 
 | Composant | Technologie | Rôle |
 |-----------|------------|------|
 | Frontend | React 18 + TypeScript + Vite | Interface utilisateur |
-| API | FastAPI + Python 3.11+ | Backend REST |
+| API | FastAPI + Python 3.12+ | Backend REST |
 | Auth | Keycloak 24 + JWT RS256 | Identification & RBAC |
 | Base | PostgreSQL 16 | Stockage persistant |
 | IA | 8 modules natifs Python | Optimisation & prédiction |
